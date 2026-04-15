@@ -1,6 +1,8 @@
 import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom';
 import DashboardLayout from './layouts/DashboardLayout';
 import Dashboard from './pages/Dashboard';
+import ProductListing from './pages/ProductListing';
+import ProductForm from './pages/ProductForm';
 import OrderListing from './pages/OrderListing';
 import OrderDetail from './pages/OrderDetail';
 import OrderForm from './pages/OrderForm';
@@ -12,6 +14,9 @@ function App() {
         <Route path="/" element={<DashboardLayout />}>
           <Route index element={<Navigate to="/dashboard" replace />} />
           <Route path="dashboard" element={<Dashboard />} />
+          <Route path="products" element={<ProductListing />} />
+          <Route path="products/new" element={<ProductForm />} />
+          <Route path="products/:id/edit" element={<ProductForm />} />
           <Route path="orders" element={<OrderListing />} />
           <Route path="orders/new" element={<OrderForm />} />
           <Route path="orders/:id" element={<OrderDetail />} />

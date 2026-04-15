@@ -1,3 +1,4 @@
+import { useState, useEffect } from 'react';
 import { 
   AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer,
   BarChart, Bar
@@ -16,22 +17,43 @@ const revenueData = [
   { name: 'Jul', value: 7000 },
 ];
 
-const statsCards = [
-  { title: 'Total Orders', value: '2,854', icon: Package, trend: '+12.5%', isPositive: true, color: 'text-primary' },
-  { title: 'In Progress', value: '845', icon: Clock, trend: '+5.2%', isPositive: true, color: 'text-amber-500' },
-  { title: 'Completed', value: '1,820', icon: CheckCircle2, trend: '+18.1%', isPositive: true, color: 'text-emerald-500' },
-  { title: 'Cancelled', value: '189', icon: XOctagon, trend: '-2.4%', isPositive: false, color: 'text-rose-500' },
-];
-
-const recentOrders = [
-  { id: 'ORD-7234', customer: 'Acme Corp', amount: '$4,200.00', status: 'success', date: '2 mins ago' },
-  { id: 'ORD-7235', customer: 'Global Ind.', amount: '$1,850.00', status: 'primary', date: '15 mins ago' },
-  { id: 'ORD-7236', customer: 'TechStart', amount: '$940.00', status: 'warning', date: '1 hour ago' },
-  { id: 'ORD-7237', customer: 'Omega LLC', amount: '$12,400.00', status: 'success', date: '2 hours ago' },
-  { id: 'ORD-7238', customer: 'Nexus Systems', amount: '$450.00', status: 'danger', date: '3 hours ago' },
-];
-
 export default function Dashboard() {
+  const [orders, setOrders] = useState([]);
+
+  useEffect(() => {
+    const saved = localStorage.getItem('mockOrders');
+    if (saved) {
+      setOrders(JSON.parse(saved));
+    }
+  }, []);
+
+  const totalOrders = orders.length;
+  const inProgress = orders.filter(o => o.status === 'In Progress').length;
+  const completed = orders.filter(o => o.status === 'Completed').length;
+  const cancelled = orders.filter(o => o.status === 'Cancelled').length;
+
+  const statsCards = [
+    { title: 'Total Orders', value: totalOrders.toString(), icon: Package, trend: '+12.5%', isPositive: true, color: 'text-primary' },
+    { title: 'In Progress', value: inProgress.toString(), icon: Clock, trend: '+5.2%', isPositive: true, color: 'text-amber-500' },
+    { title: 'Completed', value: completed.toString(), icon: CheckCircle2, trend: '+18.1%', isPositive: true, color: 'text-emerald-500' },
+    { title: 'Cancelled', value: cancelled.toString(), icon: XOctagon, trend: '-2.4%', isPositive: false, color: 'text-rose-500' },
+  ];
+
+  const recentActivity = orders.slice(0, 5).map(o => {
+    let dotStatus = 'primary';
+    if (o.status === 'Completed') dotStatus = 'success';
+    if (o.status === 'Pending') dotStatus = 'warning';
+    if (o.status === 'Cancelled') dotStatus = 'danger';
+
+    return {
+      id: o.id,
+      customer: o.customer,
+      amount: o.amount,
+      status: dotStatus,
+      date: o.date
+    };
+  });
+
   return (
     <div className="space-y-6">
       <div className="flex justify-between items-center">
@@ -97,7 +119,8 @@ export default function Dashboard() {
           </CardHeader>
           <CardContent>
             <div className="space-y-5">
-              {recentOrders.map((order, i) => (
+              {recentActivity.length === 0 && <p className="text-zinc-500 text-sm">No recent activity.</p>}
+              {recentActivity.map((order, i) => (
                 <div key={i} className="flex items-center">
                   <div className={`w-2 h-2 rounded-full mr-3 ${
                     order.status === 'success' ? 'bg-emerald-500' : 

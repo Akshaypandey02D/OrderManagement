@@ -1,4 +1,5 @@
-import { useParams, Link } from 'react-router-dom';
+import { useState, useEffect } from 'react';
+import { useParams, Link, useNavigate } from 'react-router-dom';
 import { ArrowLeft, Printer, Edit, Package, Truck, User, FileText, CheckCircle2 } from 'lucide-react';
 import { Button } from '../components/ui/Button';
 import { Badge } from '../components/ui/Badge';
@@ -14,7 +15,25 @@ const timelineSteps = [
 
 export default function OrderDetail() {
   const { id } = useParams();
-  
+  const navigate = useNavigate();
+  const [order, setOrder] = useState(null);
+
+  useEffect(() => {
+    const savedOrders = JSON.parse(localStorage.getItem('mockOrders') || '[]');
+    const foundOrder = savedOrders.find(o => o.id === id);
+    if (foundOrder) setOrder(foundOrder);
+  }, [id]);
+
+  if (!order) {
+    return <div className="text-center py-20 text-white font-medium">Loading or Order Not Found...</div>;
+  }
+
+  const items = order.items || [];
+  const subtotal = items.reduce((acc, item) => acc + (item.price * item.quantity), 0);
+  const shipping = 50;
+  const tax = subtotal * 0.1;
+  const total = subtotal > 0 ? (subtotal + shipping + tax) : 0;
+
   return (
     <div className="space-y-6 max-w-5xl mx-auto pb-10">
       {/* Header */}
@@ -27,15 +46,17 @@ export default function OrderDetail() {
           </Link>
           <div>
             <div className="flex items-center space-x-3">
-              <h2 className="text-2xl font-bold text-white">Order {id || 'ORD-001'}</h2>
-              <Badge variant="primary">In Progress</Badge>
+              <h2 className="text-2xl font-bold text-white">Order {order.id}</h2>
+              <Badge variant="primary">{order.status}</Badge>
             </div>
-            <p className="text-zinc-400 text-sm mt-1">Placed on April 15, 2026 at 10:00 AM</p>
+            <p className="text-zinc-400 text-sm mt-1">Placed on {order.date}</p>
           </div>
         </div>
         <div className="flex items-center space-x-2">
           <Button variant="secondary"><Printer className="w-4 h-4 mr-2" /> Print</Button>
-          <Button><Edit className="w-4 h-4 mr-2" /> Edit Order</Button>
+          <Link to={`/orders/${order.id}/edit`}>
+            <Button><Edit className="w-4 h-4 mr-2" /> Edit Order</Button>
+          </Link>
         </div>
       </div>
 
@@ -58,30 +79,35 @@ export default function OrderDetail() {
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-border">
-                  {[1, 2].map((i) => (
+                  {items.length === 0 && (
+                    <tr><td colSpan="3" className="px-6 py-6 text-center text-zinc-500">No items in this order.</td></tr>
+                  )}
+                  {items.map((item, i) => (
                     <tr key={i} className="hover:bg-zinc-800/20 transition-colors">
                       <td className="px-6 py-4">
                         <div className="flex items-center">
-                          <div className="w-10 h-10 rounded bg-zinc-800 mr-3 flex-shrink-0" />
+                          <div className="w-10 h-10 rounded bg-zinc-800 mr-3 flex-shrink-0 flex items-center justify-center">
+                            <Package className="w-5 h-5 text-zinc-500" />
+                          </div>
                           <div>
-                            <p className="font-medium text-white">Premium Workspace Desk</p>
-                            <p className="text-xs text-zinc-500">SKU: FUR-00{i}</p>
+                            <p className="font-medium text-white">{item.name}</p>
+                            <p className="text-xs text-zinc-500">ID: {item.id}</p>
                           </div>
                         </div>
                       </td>
-                      <td className="px-6 py-4 text-center text-zinc-300">1</td>
-                      <td className="px-6 py-4 text-right text-zinc-300">$600.00</td>
+                      <td className="px-6 py-4 text-center text-zinc-300">{item.quantity}</td>
+                      <td className="px-6 py-4 text-right text-zinc-300">${(item.price * item.quantity).toFixed(2)}</td>
                     </tr>
                   ))}
                 </tbody>
               </table>
               <div className="p-6 bg-zinc-900/30 flex justify-end">
                 <div className="w-64 space-y-2 text-sm">
-                  <div className="flex justify-between text-zinc-400"><span>Subtotal</span><span>$1,200.00</span></div>
-                  <div className="flex justify-between text-zinc-400"><span>Shipping</span><span>$50.00</span></div>
-                  <div className="flex justify-between text-zinc-400"><span>Tax</span><span>$125.00</span></div>
+                  <div className="flex justify-between text-zinc-400"><span>Subtotal</span><span>${subtotal.toFixed(2)}</span></div>
+                  <div className="flex justify-between text-zinc-400"><span>Shipping</span><span>${subtotal > 0 ? shipping.toFixed(2) : "0.00"}</span></div>
+                  <div className="flex justify-between text-zinc-400"><span>Tax</span><span>${tax.toFixed(2)}</span></div>
                   <div className="flex justify-between text-white font-bold pt-2 border-t border-border text-base">
-                    <span>Total</span><span>$1,375.00</span>
+                    <span>Total</span><span>${total.toFixed(2)}</span>
                   </div>
                 </div>
               </div>
@@ -128,20 +154,20 @@ export default function OrderDetail() {
             <CardContent className="p-5 space-y-4">
               <div>
                 <p className="text-xs text-zinc-500 mb-1">Name</p>
-                <p className="text-sm text-zinc-200">Alex Johnson (Acme Corp)</p>
+                <p className="text-sm text-zinc-200">{order.customer || 'Unknown Customer'}</p>
               </div>
               <div>
                 <p className="text-xs text-zinc-500 mb-1">Email</p>
-                <p className="text-sm text-zinc-200">alex.j@acmecorp.com</p>
+                <p className="text-sm text-zinc-200">{order.email || 'N/A'}</p>
               </div>
               <div>
                 <p className="text-xs text-zinc-500 mb-1">Phone</p>
-                <p className="text-sm text-zinc-200">+1 (555) 123-4567</p>
+                <p className="text-sm text-zinc-200">{order.phone || 'N/A'}</p>
               </div>
               <div>
                 <p className="text-xs text-zinc-500 mb-1">Shipping Address</p>
                 <p className="text-sm text-zinc-200">
-                  123 Tech Boulevard, Suite 400<br/>
+                  Default Tech Boulevard<br/>
                   San Francisco, CA 94105<br/>
                   United States
                 </p>

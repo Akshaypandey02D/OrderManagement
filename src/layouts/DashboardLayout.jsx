@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { Outlet, NavLink, useLocation } from 'react-router-dom';
-import { LayoutDashboard, ShoppingCart, PlusCircle, Bell, Search, Menu, X, User } from 'lucide-react';
+import { LayoutDashboard, ShoppingCart, PlusCircle, Bell, Search, Menu, X, User, Package } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 
 export default function DashboardLayout() {
@@ -32,6 +32,7 @@ export default function DashboardLayout() {
 
   const navItems = [
     { name: 'Dashboard', path: '/dashboard', icon: LayoutDashboard },
+    { name: 'Products', path: '/products', icon: Package },
     { name: 'Orders Listing', path: '/orders', icon: ShoppingCart },
     { name: 'Create Order', path: '/orders/new', icon: PlusCircle },
   ];
@@ -116,14 +117,7 @@ export default function DashboardLayout() {
             >
               <Menu className="w-5 h-5" />
             </button>
-            <div className="relative hidden md:block">
-              <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-zinc-500" />
-              <input
-                type="text"
-                placeholder="Search orders..."
-                className="w-64 pl-10 pr-4 py-1.5 bg-zinc-900 border border-zinc-700 rounded-full text-sm focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent transition-all"
-              />
-            </div>
+
           </div>
           
           <div className="flex items-center space-x-4">

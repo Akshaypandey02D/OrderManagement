@@ -1,12 +1,12 @@
-import { useState } from 'react';
-import { motion } from 'framer-motion';
+import { useState, useEffect } from 'react';
+import { motion, AnimatePresence } from 'framer-motion';
 import { Link } from 'react-router-dom';
-import { Search, Filter, MoreHorizontal, Eye, Edit, Trash2, LayoutGrid, List } from 'lucide-react';
+import { Search, Filter, MoreHorizontal, Eye, Edit, Trash2, LayoutGrid, List, Check } from 'lucide-react';
 import { Button } from '../components/ui/Button';
 import { Badge } from '../components/ui/Badge';
 import { Card } from '../components/ui/Card';
 
-const mockOrders = [
+const initialMockOrders = [
   { id: 'ORD-001', customer: 'Acme Corp', date: '2026-04-15', amount: '$1,200.00', status: 'Pending', priority: 'High' },
   { id: 'ORD-002', customer: 'Nexus Systems', date: '2026-04-14', amount: '$3,450.00', status: 'In Progress', priority: 'Medium' },
   { id: 'ORD-003', customer: 'Global Ind.', date: '2026-04-12', amount: '$890.00', status: 'Completed', priority: 'Low' },
@@ -24,6 +24,39 @@ const statusStyles = {
 export default function OrderListing() {
   const [view, setView] = useState('table'); // 'table' or 'grid'
   const [search, setSearch] = useState('');
+  const [statusFilter, setStatusFilter] = useState('All Statuses');
+  const [orders, setOrders] = useState([]);
+  const [activeMenuId, setActiveMenuId] = useState(null);
+
+  useEffect(() => {
+    const savedOrders = localStorage.getItem('mockOrders');
+    if (savedOrders) {
+      setOrders(JSON.parse(savedOrders));
+    } else {
+      setOrders(initialMockOrders);
+      localStorage.setItem('mockOrders', JSON.stringify(initialMockOrders));
+    }
+  }, []);
+
+  const handleStatusChange = (id, newStatus) => {
+    const updated = orders.map(o => o.id === id ? { ...o, status: newStatus } : o);
+    setOrders(updated);
+    localStorage.setItem('mockOrders', JSON.stringify(updated));
+    setActiveMenuId(null);
+  };
+
+  const handleDelete = (id) => {
+    const updated = orders.filter(o => o.id !== id);
+    setOrders(updated);
+    localStorage.setItem('mockOrders', JSON.stringify(updated));
+  };
+
+  const filteredOrders = orders.filter(o => {
+    const matchesSearch = o.id.toLowerCase().includes(search.toLowerCase()) || 
+                          o.customer.toLowerCase().includes(search.toLowerCase());
+    const matchesStatus = statusFilter === 'All Statuses' || o.status === statusFilter;
+    return matchesSearch && matchesStatus;
+  });
 
   return (
     <div className="space-y-6">
@@ -56,11 +89,16 @@ export default function OrderListing() {
           />
         </div>
         <div className="flex items-center gap-2">
-          <select className="bg-zinc-900 border border-border rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary appearance-none">
+          <select 
+            className="bg-zinc-900 border border-border rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary appearance-none"
+            value={statusFilter}
+            onChange={(e) => setStatusFilter(e.target.value)}
+          >
             <option>All Statuses</option>
             <option>Pending</option>
             <option>In Progress</option>
             <option>Completed</option>
+            <option>Cancelled</option>
           </select>
           <Button variant="secondary" className="px-3">
             <Filter className="w-4 h-4" />
@@ -84,7 +122,12 @@ export default function OrderListing() {
                 </tr>
               </thead>
               <tbody>
-                {mockOrders.map((order, i) => (
+                {filteredOrders.length === 0 && (
+                  <tr>
+                    <td colSpan="6" className="px-6 py-8 text-center text-zinc-500">No orders found.</td>
+                  </tr>
+                )}
+                {filteredOrders.map((order, i) => (
                   <motion.tr 
                     initial={{ opacity: 0, y: 10 }}
                     animate={{ opacity: 1, y: 0 }}
@@ -106,9 +149,46 @@ export default function OrderListing() {
                             <Eye className="w-4 h-4" />
                           </button>
                         </Link>
-                        <button className="p-1.5 text-zinc-400 hover:text-white rounded-md hover:bg-zinc-700 transition">
-                          <MoreHorizontal className="w-4 h-4" />
+                        <button 
+                          onClick={() => handleDelete(order.id)}
+                          className="p-1.5 text-zinc-400 hover:text-rose-500 rounded-md hover:bg-zinc-700 transition"
+                        >
+                          <Trash2 className="w-4 h-4" />
                         </button>
+                        <div className="relative">
+                          <button 
+                            onClick={() => setActiveMenuId(activeMenuId === order.id ? null : order.id)}
+                            className="p-1.5 text-zinc-400 hover:text-white rounded-md hover:bg-zinc-700 transition"
+                          >
+                            <MoreHorizontal className="w-4 h-4" />
+                          </button>
+                          
+                          <AnimatePresence>
+                            {activeMenuId === order.id && (
+                              <motion.div
+                                initial={{ opacity: 0, scale: 0.95, y: -10 }}
+                                animate={{ opacity: 1, scale: 1, y: 0 }}
+                                exit={{ opacity: 0, scale: 0.95, y: -10 }}
+                                transition={{ duration: 0.15 }}
+                                className="absolute right-8 top-0 mt-1 w-36 bg-zinc-900 border border-border rounded-lg shadow-xl overflow-hidden z-20 text-left"
+                              >
+                                <div className="p-1">
+                                  <div className="px-2 py-1.5 text-[10px] font-semibold text-zinc-500 uppercase tracking-wider">Set Status</div>
+                                  {Object.keys(statusStyles).map(status => (
+                                    <button 
+                                      key={status}
+                                      onClick={() => handleStatusChange(order.id, status)}
+                                      className="w-full text-left px-2 py-1.5 text-sm rounded-md text-zinc-300 hover:text-white hover:bg-zinc-800 transition-colors flex justify-between items-center"
+                                    >
+                                      {status}
+                                      {order.status === status && <Check className="w-3 h-3 text-primary" />}
+                                    </button>
+                                  ))}
+                                </div>
+                              </motion.div>
+                            )}
+                          </AnimatePresence>
+                        </div>
                       </div>
                     </td>
                   </motion.tr>
@@ -119,7 +199,10 @@ export default function OrderListing() {
         </Card>
       ) : (
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-          {mockOrders.map((order, i) => (
+          {filteredOrders.length === 0 && (
+             <div className="col-span-full py-10 text-center text-zinc-500">No orders found.</div>
+          )}
+          {filteredOrders.map((order, i) => (
             <motion.div
               initial={{ opacity: 0, scale: 0.95 }}
               animate={{ opacity: 1, scale: 1 }}
@@ -149,8 +232,15 @@ export default function OrderListing() {
                   <div className="mt-4 pt-4 border-t border-border flex justify-between items-center z-20 relative">
                     <span className="text-xs text-zinc-500">Priority: {order.priority}</span>
                     <div className="flex space-x-1">
-                      <button className="p-1 text-zinc-500 hover:text-white transition z-20"><Edit className="w-4 h-4"/></button>
-                      <button className="p-1 text-rose-500 hover:text-rose-400 transition z-20"><Trash2 className="w-4 h-4"/></button>
+                      <Link to={`/orders/${order.id}/edit`} className="z-20">
+                         <button className="p-1 text-zinc-500 hover:text-white transition"><Edit className="w-4 h-4"/></button>
+                      </Link>
+                      <button 
+                        onClick={(e) => { e.preventDefault(); handleDelete(order.id); }}
+                        className="p-1 text-rose-500 hover:text-rose-400 transition z-20"
+                      >
+                        <Trash2 className="w-4 h-4"/>
+                      </button>
                     </div>
                   </div>
                 </div>
