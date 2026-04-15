@@ -39,6 +39,20 @@ export default function OrderListing() {
   }, []);
 
   const handleStatusChange = (id, newStatus) => {
+    const order = orders.find(o => o.id === id);
+    if (order && order.status !== newStatus && (newStatus === 'Completed' || newStatus === 'Cancelled')) {
+      const notifs = JSON.parse(localStorage.getItem('mockNotifications') || '[]');
+      notifs.unshift({
+        id: Date.now().toString() + Math.random(),
+        message: `Order ${id} has been marked as ${newStatus}`,
+        type: newStatus === 'Completed' ? 'success' : 'danger',
+        read: false,
+        time: new Date().toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'})
+      });
+      localStorage.setItem('mockNotifications', JSON.stringify(notifs));
+      window.dispatchEvent(new Event('dashboard-notifications-update'));
+    }
+
     const updated = orders.map(o => o.id === id ? { ...o, status: newStatus } : o);
     setOrders(updated);
     localStorage.setItem('mockOrders', JSON.stringify(updated));

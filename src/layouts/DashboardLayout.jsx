@@ -10,7 +10,34 @@ export default function DashboardLayout() {
     }
     return true;
   });
+  const [notificationsOpen, setNotificationsOpen] = useState(false);
+  const [notifications, setNotifications] = useState([]);
   const location = useLocation();
+
+  useEffect(() => {
+    const loadNotifications = () => {
+      const saved = localStorage.getItem('mockNotifications');
+      if (saved) setNotifications(JSON.parse(saved));
+    };
+    loadNotifications();
+    window.addEventListener('dashboard-notifications-update', loadNotifications);
+    window.addEventListener('storage', loadNotifications);
+    return () => {
+      window.removeEventListener('dashboard-notifications-update', loadNotifications);
+      window.removeEventListener('storage', loadNotifications);
+    };
+  }, []);
+
+  const unreadCount = notifications.filter(n => !n.read).length;
+
+  const handleOpenNotifications = () => {
+    setNotificationsOpen(!notificationsOpen);
+    if (!notificationsOpen && unreadCount > 0) {
+      const updated = notifications.map(n => ({ ...n, read: true }));
+      setNotifications(updated);
+      localStorage.setItem('mockNotifications', JSON.stringify(updated));
+    }
+  };
 
   useEffect(() => {
     const handleResize = () => {
@@ -121,10 +148,50 @@ export default function DashboardLayout() {
           </div>
           
           <div className="flex items-center space-x-4">
-            <button className="relative p-2 text-zinc-400 hover:text-white transition-colors">
-              <Bell className="w-5 h-5" />
-              <span className="absolute top-1.5 right-1.5 w-2 h-2 bg-rose-500 rounded-full ring-2 ring-background"></span>
-            </button>
+            <div className="relative">
+              <button 
+                onClick={handleOpenNotifications}
+                className="relative p-2 text-zinc-400 hover:text-white transition-colors"
+                title="Notifications"
+              >
+                <Bell className="w-5 h-5" />
+                {unreadCount > 0 && (
+                  <span className="absolute top-1 right-1 w-2.5 h-2.5 bg-rose-500 rounded-full ring-2 ring-background animate-pulse"></span>
+                )}
+              </button>
+              <AnimatePresence>
+                {notificationsOpen && (
+                  <motion.div
+                    initial={{ opacity: 0, y: 10, scale: 0.95 }}
+                    animate={{ opacity: 1, y: 0, scale: 1 }}
+                    exit={{ opacity: 0, y: 10, scale: 0.95 }}
+                    className="absolute right-0 mt-2 w-80 bg-zinc-900 border border-border shadow-xl rounded-xl overflow-hidden z-50 text-left flex flex-col"
+                  >
+                     <div className="p-3 border-b border-border font-medium text-white text-sm bg-zinc-800/50 flex justify-between items-center">
+                       <span>Notifications</span>
+                       {unreadCount > 0 && <span className="px-2 py-0.5 rounded-full bg-primary/20 text-primary text-xs">{unreadCount} new</span>}
+                     </div>
+                     <div className="max-h-64 overflow-y-auto">
+                       {notifications.length === 0 ? (
+                         <div className="p-4 text-center text-sm text-zinc-500">No notifications yet.</div>
+                       ) : (
+                         notifications.map(n => (
+                           <div key={n.id} className="p-3 border-b border-zinc-800/50 last:border-0 hover:bg-zinc-800/30 transition-colors">
+                             <div className="flex items-start">
+                               <div className={`mt-1.5 w-2 h-2 rounded-full mr-3 shrink-0 ${n.type === 'success' ? 'bg-emerald-500' : 'bg-rose-500'}`} />
+                               <div>
+                                 <p className="text-sm text-zinc-200 leading-tight">{n.message}</p>
+                                 <p className="text-xs text-zinc-500 mt-1.5">{n.time}</p>
+                               </div>
+                             </div>
+                           </div>
+                         ))
+                       )}
+                     </div>
+                  </motion.div>
+                )}
+              </AnimatePresence>
+            </div>
             <div className="flex items-center space-x-2 pl-4 border-l border-border">
               <div className="w-8 h-8 rounded-full bg-gradient-to-tr from-primary to-accent flex items-center justify-center text-white">
                 <User className="w-4 h-4" />

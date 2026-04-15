@@ -5,14 +5,6 @@ import { Button } from '../components/ui/Button';
 import { Badge } from '../components/ui/Badge';
 import { Card, CardContent } from '../components/ui/Card';
 
-const timelineSteps = [
-  { status: 'Order Placed', time: '10:00 AM, Apr 15', completed: true },
-  { status: 'Processing', time: '11:30 AM, Apr 15', completed: true },
-  { status: 'Packed', time: '02:15 PM, Apr 15', completed: true },
-  { status: 'In Transit', time: 'Pending', completed: false },
-  { status: 'Delivered', time: 'Pending', completed: false },
-];
-
 export default function OrderDetail() {
   const { id } = useParams();
   const navigate = useNavigate();
@@ -33,6 +25,26 @@ export default function OrderDetail() {
   const shipping = 50;
   const tax = subtotal * 0.1;
   const total = subtotal > 0 ? (subtotal + shipping + tax) : 0;
+
+  const getTimelineSteps = (status) => {
+    let level = 1;
+    if (status === 'In Progress') level = 3;
+    if (status === 'Completed') level = 5;
+    
+    return [
+      { status: 'Order Placed', time: order.date, completed: true },
+      { status: 'Processing', time: level >= 2 ? order.date : 'Pending', completed: level >= 2 && status !== 'Cancelled' },
+      { status: 'Packed', time: level >= 3 ? order.date : 'Pending', completed: level >= 3 && status !== 'Cancelled' },
+      { status: 'In Transit', time: level >= 4 ? order.date : 'Pending', completed: level >= 4 && status !== 'Cancelled' },
+      { 
+        status: status === 'Cancelled' ? 'Cancelled' : 'Delivered', 
+        time: (level >= 5 || status === 'Cancelled') ? order.date : 'Pending', 
+        completed: level >= 5 || status === 'Cancelled'
+      },
+    ];
+  };
+
+  const dynamicTimeline = getTimelineSteps(order.status);
 
   return (
     <div className="space-y-6 max-w-5xl mx-auto pb-10">
@@ -123,7 +135,7 @@ export default function OrderDetail() {
             </div>
             <CardContent className="p-6">
               <div className="relative border-l border-zinc-700 ml-3 space-y-8">
-                {timelineSteps.map((step, i) => (
+                {dynamicTimeline.map((step, i) => (
                   <div key={i} className="relative pl-8">
                     <div className={`absolute -left-[9px] top-1 w-4 h-4 rounded-full border-2 ${
                       step.completed 
