@@ -1,143 +1,324 @@
-import { useState, useEffect } from 'react';
+import { useState } from 'react';
 import { 
-  AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer,
-  BarChart, Bar
+  ComposedChart, Bar, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer
 } from 'recharts';
 import { Card, CardHeader, CardTitle, CardContent } from '../components/ui/Card';
-import { ArrowUpRight, ArrowDownRight, Package, Clock, CheckCircle2, XOctagon } from 'lucide-react';
+import { 
+  ArrowDownRight, Package, CheckCircle2, ChevronRight, Calendar, Download, CreditCard, Clock
+} from 'lucide-react';
 import { Badge } from '../components/ui/Badge';
-
-const revenueData = [
-  { name: 'Jan', value: 4000 },
-  { name: 'Feb', value: 3000 },
-  { name: 'Mar', value: 5000 },
-  { name: 'Apr', value: 4500 },
-  { name: 'May', value: 6000 },
-  { name: 'Jun', value: 5500 },
-  { name: 'Jul', value: 7000 },
-];
+import { Link } from 'react-router-dom';
+import { Button } from '../components/ui/Button';
+import { useAppContext } from '../core/AppContext';
 
 export default function Dashboard() {
-  const [orders, setOrders] = useState([]);
+  const { orders, products } = useAppContext();
 
-  useEffect(() => {
-    const saved = localStorage.getItem('mockOrders');
-    if (saved) {
-      setOrders(JSON.parse(saved));
-    }
-  }, []);
+  // Logic: Extract actual date range from orders
+  const sortedDates = [...orders].map(o => o.date).sort();
+  const dateRangeStr = sortedDates.length > 0 
+    ? `${new Date(sortedDates[0]).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })} - ${new Date(sortedDates[sortedDates.length - 1]).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}`
+    : 'No data available';
 
-  const totalOrders = orders.length;
-  const inProgress = orders.filter(o => o.status === 'In Progress').length;
-  const completed = orders.filter(o => o.status === 'Completed').length;
-  const cancelled = orders.filter(o => o.status === 'Cancelled').length;
+  // KPI Calculations
+  const totalRevenue = orders.reduce((sum, o) => {
+    const val = parseFloat(o.amount.replace(/[^0-9.-]+/g,""));
+    return sum + (isNaN(val) ? 0 : val);
+  }, 0);
+  
+  const formattedRevenue = new Intl.NumberFormat('en-US', { 
+    style: 'currency', 
+    currency: 'USD',
+    maximumFractionDigits: 0 
+  }).format(totalRevenue);
 
-  const statsCards = [
-    { title: 'Total Orders', value: totalOrders.toString(), icon: Package, trend: '+12.5%', isPositive: true, color: 'text-primary' },
-    { title: 'In Progress', value: inProgress.toString(), icon: Clock, trend: '+5.2%', isPositive: true, color: 'text-amber-500' },
-    { title: 'Completed', value: completed.toString(), icon: CheckCircle2, trend: '+18.1%', isPositive: true, color: 'text-emerald-500' },
-    { title: 'Cancelled', value: cancelled.toString(), icon: XOctagon, trend: '-2.4%', isPositive: false, color: 'text-rose-500' },
-  ];
+  const pendingOrders = orders.filter(o => o.status === 'Pending').length;
+  const inProgressOrders = orders.filter(o => o.status === 'In Progress').length;
+  const completedOrders = orders.filter(o => o.status === 'Completed').length;
+  const cancelledOrders = orders.filter(o => o.status === 'Cancelled').length;
+  const lowStockCount = products.filter(p => p.stock < (p.minQuantity || 10)).length;
 
-  const recentActivity = orders.slice(0, 5).map(o => {
-    let dotStatus = 'primary';
-    if (o.status === 'Completed') dotStatus = 'success';
-    if (o.status === 'Pending') dotStatus = 'warning';
-    if (o.status === 'Cancelled') dotStatus = 'danger';
+  // Chart Data Preparation
+  const ordersByDate = orders.reduce((acc, o) => {
+    acc[o.date] = (acc[o.date] || 0) + 1;
+    return acc;
+  }, {});
 
-    return {
-      id: o.id,
-      customer: o.customer,
-      amount: o.amount,
-      status: dotStatus,
-      date: o.date
-    };
-  });
+  const revenueByDate = orders.reduce((acc, o) => {
+    const val = parseFloat(o.amount.replace(/[^0-9.-]+/g,""));
+    acc[o.date] = (acc[o.date] || 0) + val;
+    return acc;
+  }, {});
+
+  const performanceData = Object.keys(ordersByDate).sort().map(date => ({
+    name: new Date(date).toLocaleDateString('en-US', { month: 'short', day: 'numeric' }),
+    orders: ordersByDate[date],
+    revenue: revenueByDate[date]
+  }));
 
   return (
-    <div className="space-y-6">
-      <div className="flex justify-between items-center">
-        <div>
-          <h2 className="text-2xl font-bold tracking-tight text-white">Dashboard Overview</h2>
-          <p className="text-zinc-400 mt-1">Welcome back. Here is what's happening with your orders today.</p>
+    <div className="space-y-10 pb-16">
+      {/* Top Action Bar */}
+      <div className="flex items-center justify-between">
+        <div className="flex items-center gap-3">
+           <div className="w-2 h-8 bg-primary rounded-full" />
+           <h2 className="text-2xl font-black text-textMain tracking-tight">Analytics Command Center</h2>
+        </div>
+        <div className="flex gap-3">
+          <Button variant="secondary" className="bg-card/40 backdrop-blur-md border border-border" onClick={() => window.print()}>
+            <Download className="w-4 h-4 mr-2" /> Export Logs
+          </Button>
+          <Link to="/orders/new">
+            <Button className="shadow-lg shadow-primary/25">
+              Generate New Order
+            </Button>
+          </Link>
         </div>
       </div>
 
-      {/* Stats Grid */}
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
-        {statsCards.map((stat, i) => (
-          <Card key={i} className="glass hover:-translate-y-1 transition-transform duration-300">
-            <CardHeader className="flex flex-row items-center justify-between pb-2">
-              <CardTitle className="text-sm font-medium text-zinc-400">{stat.title}</CardTitle>
-              <stat.icon className={`w-4 h-4 ${stat.color}`} />
-            </CardHeader>
-            <CardContent>
-              <div className="text-2xl font-bold text-white">{stat.value}</div>
-              <p className={`text-xs mt-1 flex items-center ${stat.isPositive ? 'text-emerald-500' : 'text-rose-500'}`}>
-                {stat.isPositive ? <ArrowUpRight className="w-3 h-3 mr-1" /> : <ArrowDownRight className="w-3 h-3 mr-1" />}
-                {stat.trend} from last month
-              </p>
-            </CardContent>
-          </Card>
-        ))}
+      {/* Primary KPI Grid - Total & Revenue */}
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-4">
+        <StatCard 
+          title="Gross Revenue" 
+          value={formattedRevenue} 
+          trend="+12%" 
+          trendUp={true} 
+          icon={CreditCard}
+          color="indigo"
+        />
+        <StatCard 
+          title="Total Orders" 
+          value={orders.length} 
+          trend="Lifetime" 
+          trendUp={true} 
+          icon={Package}
+          color="blue"
+        />
+        <StatCard 
+          title="In Progress" 
+          value={inProgressOrders} 
+          trend="Active" 
+          trendUp={true} 
+          icon={Clock}
+          color="amber"
+          className="lg:col-span-1"
+        />
+        <StatCard 
+          title="Completed" 
+          value={completedOrders} 
+          trend="Success" 
+          trendUp={true} 
+          icon={CheckCircle2}
+          color="emerald"
+        />
+        <StatCard 
+          title="Cancelled" 
+          value={cancelledOrders} 
+          trend="Lost" 
+          trendUp={false} 
+          icon={ArrowDownRight}
+          color="rose"
+        />
       </div>
 
-      {/* Charts Section */}
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-        <Card className="lg:col-span-2 glass">
-          <CardHeader>
-            <CardTitle className="text-zinc-100">Order Volume Overview</CardTitle>
+      <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
+         <StatCard 
+          title="Pending Approval" 
+          value={pendingOrders} 
+          trend="Awaiting" 
+          trendUp={false} 
+          icon={Package}
+          color="blue"
+        />
+        <StatCard 
+          title="Inventory Risk" 
+          value={lowStockCount} 
+          trend={`${lowStockCount > 0 ? 'Urgent' : 'Healthy'}`} 
+          trendUp={lowStockCount === 0} 
+          icon={ArrowDownRight}
+          color={lowStockCount > 0 ? "rose" : "emerald"}
+        />
+      </div>
+
+      {/* Main Content Grid */}
+      <div className="grid grid-cols-1 xl:grid-cols-3 gap-8">
+        {/* Sales Performance Chart */}
+        <Card className="xl:col-span-2 glass border-border shadow-2xl relative overflow-hidden group">
+          <CardHeader className="flex flex-row items-center justify-between relative z-10">
+            <div>
+              <CardTitle className="text-xl font-black text-textMain">Revenue Pulse</CardTitle>
+              <p className="text-sm text-textMuted font-medium italic">Advanced fulfillment & yield diagnostics</p>
+            </div>
+            <div className="flex gap-2">
+               <div className="flex items-center gap-2 px-3 py-1 bg-primary/5 rounded-full border border-primary/10">
+                 <div className="w-1.5 h-1.5 rounded-full bg-primary animate-ping" />
+                 <span className="text-[10px] font-black uppercase text-primary">Live stream</span>
+               </div>
+            </div>
           </CardHeader>
-          <CardContent>
-            <div className="h-[300px] w-full">
+          <CardContent className="relative z-10">
+            <div className="h-[400px] w-full mt-6">
               <ResponsiveContainer width="100%" height="100%">
-                <AreaChart data={revenueData} margin={{ top: 10, right: 10, left: -20, bottom: 0 }}>
+                <ComposedChart data={performanceData}>
                   <defs>
-                    <linearGradient id="colorValue" x1="0" y1="0" x2="0" y2="1">
-                      <stop offset="5%" stopColor="#6366f1" stopOpacity={0.3}/>
-                      <stop offset="95%" stopColor="#6366f1" stopOpacity={0}/>
+                    <linearGradient id="barGradient" x1="0" y1="0" x2="0" y2="1">
+                      <stop offset="0%" stopColor="var(--primary)" stopOpacity={0.8}/>
+                      <stop offset="100%" stopColor="var(--primary)" stopOpacity={0.1}/>
+                    </linearGradient>
+                    <linearGradient id="lineGradient" x1="0" y1="0" x2="1" y2="0">
+                      <stop offset="0%" stopColor="#8b5cf6" />
+                      <stop offset="100%" stopColor="#ec4899" />
                     </linearGradient>
                   </defs>
-                  <CartesianGrid strokeDasharray="3 3" stroke="#27272a" vertical={false} />
-                  <XAxis dataKey="name" stroke="#a1a1aa" fontSize={12} tickLine={false} axisLine={false} />
-                  <YAxis stroke="#a1a1aa" fontSize={12} tickLine={false} axisLine={false} tickFormatter={(value) => `$${value}`} />
-                  <Tooltip 
-                    contentStyle={{ backgroundColor: '#18181b', borderColor: '#27272a', borderRadius: '8px' }}
-                    itemStyle={{ color: '#fff' }}
+                  <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="var(--border)" opacity={0.2} />
+                  <XAxis 
+                    dataKey="name" 
+                    stroke="var(--text-muted)" 
+                    fontSize={10} 
+                    fontWeight="bold"
+                    axisLine={false} 
+                    tickLine={false} 
+                    dy={15}
                   />
-                  <Area type="monotone" dataKey="value" stroke="#6366f1" strokeWidth={3} fillOpacity={1} fill="url(#colorValue)" />
-                </AreaChart>
+                  <YAxis 
+                    stroke="var(--text-muted)" 
+                    fontSize={10} 
+                    fontWeight="bold"
+                    axisLine={false} 
+                    tickLine={false}
+                    tickFormatter={(v) => `$${v}`}
+                  />
+                  <Tooltip 
+                    cursor={{ fill: 'var(--primary)', opacity: 0.05 }}
+                    contentStyle={{ 
+                      backgroundColor: 'rgba(0,0,0,0.8)', 
+                      backdropFilter: 'blur(10px)',
+                      border: 'none',
+                      borderRadius: '12px',
+                      boxShadow: '0 20px 50px rgba(0,0,0,0.3)'
+                    }}
+                    labelStyle={{ color: '#fff', fontWeight: '900', marginBottom: '4px' }}
+                    itemStyle={{ color: 'var(--primary)', fontSize: '12px', fontWeight: 'bold' }}
+                  />
+                  <Bar 
+                    dataKey="revenue" 
+                    fill="url(#barGradient)" 
+                    radius={[10, 10, 0, 0]} 
+                    barSize={40}
+                  />
+                  <Line 
+                    type="monotone" 
+                    dataKey="revenue" 
+                    stroke="url(#lineGradient)" 
+                    strokeWidth={4} 
+                    dot={{ fill: '#fff', stroke: 'var(--primary)', strokeWidth: 2, r: 4 }}
+                    activeDot={{ r: 8, strokeWidth: 0, fill: 'var(--primary)' }}
+                  />
+                </ComposedChart>
               </ResponsiveContainer>
             </div>
           </CardContent>
+          {/* Subtle background flair */}
+          <div className="absolute -bottom-24 -right-24 w-64 h-64 bg-primary/10 rounded-full blur-[100px] z-0 group-hover:bg-primary/20 transition-all duration-700" />
         </Card>
 
-        {/* Recent Orders Widget */}
-        <Card className="glass">
+        {/* Recent Activity / Top Customers */}
+        <Card className="glass border-border shadow-md flex flex-col">
           <CardHeader>
-            <CardTitle className="text-zinc-100">Recent Activity</CardTitle>
+            <CardTitle className="text-xl font-bold text-textMain">Top Fulfillments</CardTitle>
+            <p className="text-sm text-textMuted">Highest value orders recently placed</p>
           </CardHeader>
-          <CardContent>
-            <div className="space-y-5">
-              {recentActivity.length === 0 && <p className="text-zinc-500 text-sm">No recent activity.</p>}
-              {recentActivity.map((order, i) => (
-                <div key={i} className="flex items-center">
-                  <div className={`w-2 h-2 rounded-full mr-3 ${
-                    order.status === 'success' ? 'bg-emerald-500' : 
-                    order.status === 'primary' ? 'bg-primary' : 
-                    order.status === 'warning' ? 'bg-amber-500' : 'bg-rose-500'
-                  }`} />
-                  <div className="flex-1 space-y-1">
-                    <p className="text-sm font-medium text-zinc-100 leading-none">{order.customer}</p>
-                    <p className="text-xs text-zinc-500">{order.id} • {order.amount}</p>
-                  </div>
-                  <div className="text-xs text-zinc-400">{order.date}</div>
+          <CardContent className="flex-1 overflow-auto">
+            <div className="space-y-6">
+              {orders.length === 0 ? (
+                <div className="text-center py-10">
+                  <Package className="w-10 h-10 text-border mx-auto mb-2" />
+                  <p className="text-textMuted text-sm">No activity records found</p>
                 </div>
-              ))}
+              ) : (
+                [...orders]
+                  .sort((a, b) => parseFloat(b.amount.replace(/[^0-9.-]+/g,"")) - parseFloat(a.amount.replace(/[^0-9.-]+/g,"")))
+                  .slice(0, 6)
+                  .map((order) => (
+                    <div key={order.id} className="flex items-center justify-between group cursor-pointer p-2 hover:bg-black/5 dark:hover:bg-white/5 rounded-xl transition-all">
+                      <div className="flex items-center gap-4">
+                        <div className="w-10 h-10 rounded-full bg-primary/10 flex items-center justify-center text-primary font-bold text-xs">
+                          {order.customer.charAt(0)}
+                        </div>
+                        <div>
+                          <p className="text-sm font-bold text-textMain leading-none">{order.customer}</p>
+                          <p className="text-xs text-textMuted mt-1">{order.id} • {order.date}</p>
+                        </div>
+                      </div>
+                      <div className="text-right">
+                        <p className="text-sm font-black text-textMain">{order.amount}</p>
+                        <Badge className="text-[10px] h-4 px-1.5" variant={order.status === 'Completed' ? 'success' : 'warning'}>
+                          {order.status}
+                        </Badge>
+                      </div>
+                    </div>
+                  ))
+              )}
             </div>
+            <Link to="/orders">
+              <Button variant="ghost" className="w-full mt-6 text-primary hover:bg-primary/5">
+                View All Transactions <ChevronRight className="w-4 h-4 ml-1" />
+              </Button>
+            </Link>
           </CardContent>
         </Card>
       </div>
+
+      {/* Critical Stock Alert Bar (Lower half) */}
+      {lowStockCount > 0 && (
+        <Card className="border-l-4 border-l-rose-500 bg-rose-500/5 dark:bg-rose-500/10 border-border overflow-hidden">
+          <CardContent className="py-4 flex flex-col sm:flex-row items-center justify-between gap-4">
+            <div className="flex items-center gap-3">
+              <div className="p-2 bg-rose-500 text-white rounded-lg">
+                <ArrowDownRight className="w-5 h-5" />
+              </div>
+              <div>
+                <h4 className="font-bold text-textMain">Inventory Risk Detected</h4>
+                <p className="text-sm text-textMuted">{lowStockCount} products are trending towards stockouts. Immediate restock recommended.</p>
+              </div>
+            </div>
+            <Link to="/inventory/low-stock">
+              <Button size="sm" className="bg-rose-500 hover:bg-rose-600 text-white border-none shadow-sm">
+                Manage Inventory
+              </Button>
+            </Link>
+          </CardContent>
+        </Card>
+      )}
     </div>
+  );
+}
+
+function StatCard({ title, value, trend, trendUp, icon: Icon, color }) {
+  const colorMap = {
+    indigo: 'text-indigo-500 bg-indigo-500/10',
+    blue: 'text-blue-500 bg-blue-500/10',
+    emerald: 'text-emerald-500 bg-emerald-500/10',
+    rose: 'text-rose-500 bg-rose-500/10',
+    amber: 'text-amber-500 bg-amber-500/10',
+  };
+
+  return (
+    <Card className="glass border-border shadow-sm group hover:scale-[1.02] transition-transform duration-300">
+      <CardContent className="p-6">
+        <div className="flex justify-between items-start mb-4">
+          <div className={`p-2 rounded-xl ${colorMap[color] || colorMap.indigo}`}>
+            <Icon className="w-5 h-5" />
+          </div>
+          <div className={`flex items-center gap-1 text-xs font-bold ${trendUp ? 'text-emerald-500' : 'text-rose-500'}`}>
+            {trend}
+          </div>
+        </div>
+        <div>
+          <h4 className="text-textMuted text-xs font-bold uppercase tracking-wider">{title}</h4>
+          <p className="text-2xl font-black text-textMain mt-1">{value}</p>
+        </div>
+      </CardContent>
+    </Card>
   );
 }

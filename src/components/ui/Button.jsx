@@ -10,9 +10,9 @@ export const Button = forwardRef(({ className, variant = 'primary', size = 'md',
   const baseStyles = 'inline-flex items-center justify-center rounded-md font-medium transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary disabled:pointer-events-none disabled:opacity-50';
   
   const variants = {
-    primary: 'bg-primary text-white hover:bg-primary-hover shadow-lg glow-hover',
-    secondary: 'bg-secondary text-white hover:bg-secondary-hover border border-white/10',
-    ghost: 'hover:bg-white/10 text-zinc-100',
+    primary: 'bg-primary text-primary-foreground hover:bg-primary-hover shadow-md',
+    secondary: 'bg-card text-textMain hover:bg-black/5 dark:hover:bg-white/5 border border-border',
+    ghost: 'hover:bg-black/5 dark:hover:bg-white/10 text-textMain',
     danger: 'bg-destructive/10 text-destructive hover:bg-destructive/20 border border-destructive/20',
   };
 

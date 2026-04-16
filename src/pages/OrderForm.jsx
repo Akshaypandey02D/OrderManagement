@@ -5,22 +5,7 @@ import { Check, ChevronRight, ChevronLeft, Package, User, CreditCard, Plus, Tras
 import { Button } from '../components/ui/Button';
 import { Card, CardContent } from '../components/ui/Card';
 import { Input } from '../components/ui/Input';
-
-const initialMockProducts = [
-  { id: 'PRD-001', name: 'MacBook Pro 16"', price: 2499.00, stock: 45, status: 'In Stock' },
-  { id: 'PRD-002', name: 'iPhone 15 Pro', price: 1099.00, stock: 120, status: 'In Stock' },
-  { id: 'PRD-003', name: 'AirPods Max', price: 549.00, stock: 0, status: 'Out of Stock' },
-  { id: 'PRD-004', name: 'iPad Pro 12.9"', price: 1099.00, stock: 15, status: 'Low Stock' },
-  { id: 'PRD-005', name: 'Magic Keyboard', price: 299.00, stock: 80, status: 'In Stock' },
-];
-
-const getAvailableProducts = () => {
-  if (typeof window === 'undefined') return initialMockProducts;
-  const saved = localStorage.getItem('mockProducts');
-  if (saved) return JSON.parse(saved);
-  localStorage.setItem('mockProducts', JSON.stringify(initialMockProducts));
-  return initialMockProducts;
-};
+import { useAppContext } from '../core/AppContext';
 
 const steps = [
   { id: 1, title: 'Customer Details', icon: User },
@@ -29,6 +14,7 @@ const steps = [
 ];
 
 export default function OrderForm() {
+  const { products, setProducts, orders, setOrders, dispatchNotification } = useAppContext();
   const navigate = useNavigate();
   const { id } = useParams();
   const isEditing = !!id;
@@ -49,8 +35,7 @@ export default function OrderForm() {
 
   useEffect(() => {
     if (isEditing) {
-      const savedOrders = JSON.parse(localStorage.getItem('mockOrders') || '[]');
-      const found = savedOrders.find(o => o.id === id);
+      const found = orders.find(o => o.id === id);
       if (found) {
         setFormData({
           customerName: found.customer || '',
@@ -64,8 +49,7 @@ export default function OrderForm() {
 
   const handleAddItem = () => {
     if (!selectedProductId) return;
-    const productsList = getAvailableProducts();
-    const product = productsList.find(p => p.id === selectedProductId);
+    const product = products.find(p => p.id === selectedProductId);
     if (!product) return;
     
     let productPrice = product.price;
@@ -132,11 +116,46 @@ export default function OrderForm() {
     const totalAmount = formData.orderItems?.reduce((acc, item) => acc + (item.price * item.quantity), 0) || 0;
     const date = new Date().toISOString().split('T')[0];
     
-    const existingOrders = JSON.parse(localStorage.getItem('mockOrders') || '[]');
     let updatedOrders;
+    let newProducts = [...products];
+    let stockAlerts = [];
 
     if (isEditing) {
-      updatedOrders = existingOrders.map(o => {
+      const oldOrder = orders.find(o => o.id === id);
+      const oldItems = oldOrder?.items || [];
+      const newItems = formData.orderItems || [];
+
+      // Create a map of changes per product ID
+      const productChanges = {}; // productId -> quantity change
+
+      // Restore old quantities (add them back to product stock effectively)
+      oldItems.forEach(item => {
+        productChanges[item.id] = (productChanges[item.id] || 0) + item.quantity;
+      });
+
+      // Deduct new quantities
+      newItems.forEach(item => {
+        productChanges[item.id] = (productChanges[item.id] || 0) - item.quantity;
+      });
+
+      // Apply changes to products
+      newProducts = products.map(p => {
+        if (productChanges[p.id]) {
+          const newStock = Math.max(0, p.stock + productChanges[p.id]);
+          // Notify if stock specifically dropped below minimum during this edit
+          if (newStock < (p.minQuantity || 0) && productChanges[p.id] < 0) {
+            stockAlerts.push(`${p.name} (Now ${newStock} left)`);
+          }
+          return { 
+            ...p, 
+            stock: newStock, 
+            status: newStock === 0 ? 'Out of Stock' : newStock < (p.minQuantity || 0) ? 'Low Stock' : 'In Stock' 
+          };
+        }
+        return p;
+      });
+
+      updatedOrders = orders.map(o => {
         if (o.id === id) {
           return {
             ...o,
@@ -149,6 +168,7 @@ export default function OrderForm() {
         }
         return o;
       });
+      dispatchNotification(`Order ${id} updated successfully.`, 'success');
     } else {
       const newOrder = {
         id: `ORD-${Math.floor(Math.random() * 1000).toString().padStart(3, '0')}`,
@@ -161,10 +181,29 @@ export default function OrderForm() {
         priority: 'Normal',
         items: formData.orderItems
       };
-      updatedOrders = [newOrder, ...existingOrders];
+      updatedOrders = [newOrder, ...orders];
+      dispatchNotification(`Order ${newOrder.id} created successfully.`, 'success');
+      
+      // Reduce product stock and check for low stock
+      newProducts = products.map(p => {
+        const orderedItem = formData.orderItems.find(item => item.id === p.id);
+        if (orderedItem) {
+          const newStock = Math.max(0, p.stock - orderedItem.quantity);
+          if (newStock < (p.minQuantity || 0)) {
+            stockAlerts.push(`${p.name} (Now ${newStock} left)`);
+          }
+          return { ...p, stock: newStock, status: newStock === 0 ? 'Out of Stock' : newStock < (p.minQuantity || 0) ? 'Low Stock' : 'In Stock' };
+        }
+        return p;
+      });
     }
 
-    localStorage.setItem('mockOrders', JSON.stringify(updatedOrders));
+    setProducts(newProducts);
+    if (stockAlerts.length > 0) {
+      dispatchNotification(`Low Stock Alert: ${stockAlerts.join(', ')} dropped below minimum.`, 'warning');
+    }
+
+    setOrders(updatedOrders);
 
     // Finish logic
     navigate('/orders');
@@ -173,15 +212,19 @@ export default function OrderForm() {
   return (
     <div className="max-w-3xl mx-auto space-y-8 pb-10">
       <div className="mb-8">
-        <h2 className="text-2xl font-bold tracking-tight text-white">{isEditing ? `Edit Order ${id}` : 'Create New Order'}</h2>
-        <p className="text-zinc-400 mt-1">{isEditing ? 'Update the details for this order.' : 'Fill out the details below to generate a new order record.'}</p>
+        <h2 className="text-2xl font-bold tracking-tight text-textMain">{isEditing ? `Edit Order ${id}` : 'Create New Order'}</h2>
+        <p className="text-textMuted mt-1">{isEditing ? 'Update the details for this order.' : 'Fill out the details below to generate a new order record.'}</p>
       </div>
 
       {/* Stepper */}
-      <div className="relative mb-12">
-        <div className="absolute top-1/2 left-0 w-full h-0.5 bg-zinc-800 -translate-y-1/2 z-0" />
-        <div className="absolute top-1/2 left-0 h-0.5 bg-primary -translate-y-1/2 z-0 transition-all duration-500" 
-             style={{ width: `${((currentStep - 1) / 2) * 100}%` }} />
+      {/* Enhanced Stepper */}
+      <div className="relative mb-16 max-w-2xl mx-auto px-2">
+        {/* Background Track */}
+        <div className="absolute top-6 left-6 right-6 h-1.5 bg-border rounded-full z-0" />
+        
+        {/* Animated Progress Fill */}
+        <div className="absolute top-6 left-6 h-1.5 bg-primary rounded-full z-0 transition-all duration-700 ease-out" 
+             style={{ width: `calc(${((currentStep - 1) / 2) * 100}% - ${currentStep === 1 ? '0px' : '24px'})` }} />
         
         <div className="relative z-10 flex justify-between">
           {steps.map((step) => {
@@ -191,16 +234,16 @@ export default function OrderForm() {
             
             return (
               <div key={step.id} className="flex flex-col items-center">
-                <div className={`w-10 h-10 rounded-full flex items-center justify-center border-2 transition-all duration-300 ${
+                <div className={`w-12 h-12 rounded-full flex items-center justify-center border-4 transition-all duration-500 ease-in-out ${
                   isCompleted 
-                    ? 'bg-primary border-primary text-white' 
+                    ? 'bg-primary border-primary text-primary-foreground scale-100 shadow-md' 
                     : isCurrent 
-                      ? 'bg-zinc-900 border-primary text-primary glow' 
-                      : 'bg-zinc-900 border-zinc-700 text-zinc-500'
+                      ? 'bg-background border-primary text-primary scale-110 shadow-[0_0_20px_rgba(99,102,241,0.3)]' 
+                      : 'bg-background border-border text-textMuted scale-100'
                 }`}>
-                  {isCompleted ? <Check className="w-5 h-5" /> : <Icon className="w-5 h-5" />}
+                  {isCompleted ? <Check className="w-6 h-6" /> : <Icon className="w-5 h-5" />}
                 </div>
-                <span className={`mt-3 text-sm font-medium ${isCurrent ? 'text-white' : 'text-zinc-500'}`}>
+                <span className={`mt-5 text-sm font-bold transition-all duration-300 ${isCurrent ? 'text-primary scale-105' : isCompleted ? 'text-textMain' : 'text-textMuted'}`}>
                   {step.title}
                 </span>
               </div>
@@ -223,10 +266,10 @@ export default function OrderForm() {
             >
               {currentStep === 1 && (
                 <div className="space-y-6">
-                  <h3 className="text-lg font-medium text-white mb-4">Customer Information</h3>
+                  <h3 className="text-lg font-medium text-textMain mb-4">Customer Information</h3>
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                     <div className="space-y-2">
-                       <label className="text-sm font-medium text-zinc-300">Customer Name *</label>
+                       <label className="text-sm font-medium text-textMuted">Customer Name *</label>
                        <Input 
                          placeholder="e.g. Acme Corp" 
                          value={formData.customerName}
@@ -235,7 +278,7 @@ export default function OrderForm() {
                        />
                     </div>
                     <div className="space-y-2">
-                       <label className="text-sm font-medium text-zinc-300">Email Address *</label>
+                       <label className="text-sm font-medium text-textMuted">Email Address *</label>
                        <Input 
                          type="email" 
                          placeholder="contact@acme.com"
@@ -245,7 +288,7 @@ export default function OrderForm() {
                        />
                     </div>
                     <div className="space-y-2 md:col-span-2">
-                       <label className="text-sm font-medium text-zinc-300">Phone Number</label>
+                       <label className="text-sm font-medium text-textMuted">Phone Number</label>
                        <Input 
                          placeholder="+1 (555) 000-0000" 
                          value={formData.phone}
@@ -260,7 +303,7 @@ export default function OrderForm() {
               {currentStep === 2 && (
                 <div className="space-y-6">
                   <div className="flex justify-between items-center mb-4">
-                    <h3 className="text-lg font-medium text-white">Order Items</h3>
+                    <h3 className="text-lg font-medium text-textMain">Order Items</h3>
                     {errors.items && <span className="text-rose-500 text-sm font-medium">{errors.items}</span>}
                     {formData.orderItems?.length > 0 && !isAddingItem && (
                       <Button variant="secondary" size="sm" onClick={() => setIsAddingItem(true)}>
@@ -270,10 +313,10 @@ export default function OrderForm() {
                   </div>
 
                   {(!formData.orderItems || formData.orderItems.length === 0) && !isAddingItem ? (
-                    <div className="border border-dashed border-zinc-700 rounded-lg p-8 flex flex-col items-center justify-center text-center">
-                       <Package className="w-12 h-12 text-zinc-600 mb-3" />
-                       <h4 className="text-white font-medium">No items added yet</h4>
-                       <p className="text-zinc-500 text-sm mt-1 mb-4">Search and select products from your inventory.</p>
+                    <div className="border border-dashed border-border rounded-lg p-8 flex flex-col items-center justify-center text-center">
+                       <Package className="w-12 h-12 text-textMuted mb-3" />
+                       <h4 className="text-textMain font-medium">No items added yet</h4>
+                       <p className="text-textMuted text-sm mt-1 mb-4">Search and select products from your inventory.</p>
                        <Button variant="secondary" size="sm" onClick={() => setIsAddingItem(true)}>Add Product</Button>
                     </div>
                   ) : (
@@ -281,7 +324,7 @@ export default function OrderForm() {
                       {formData.orderItems?.length > 0 && (
                         <div className="border border-border rounded-lg overflow-hidden">
                           <table className="w-full text-sm text-left">
-                            <thead className="bg-zinc-900/50 border-b border-border text-zinc-400">
+                            <thead className="bg-black/5 dark:bg-white/5 border-b border-border text-textMuted">
                               <tr>
                                 <th className="px-4 py-3 font-medium">Product</th>
                                 <th className="px-4 py-3 font-medium">Price</th>
@@ -292,13 +335,13 @@ export default function OrderForm() {
                             </thead>
                             <tbody>
                               {formData.orderItems.map((item, idx) => (
-                                <tr key={idx} className="border-b border-border last:border-0 hover:bg-zinc-800/30">
-                                  <td className="px-4 py-3 text-white">{item.name}</td>
-                                  <td className="px-4 py-3 text-zinc-300">${item.price.toFixed(2)}</td>
-                                  <td className="px-4 py-3 text-zinc-300">{item.quantity}</td>
-                                  <td className="px-4 py-3 text-white">${(item.price * item.quantity).toFixed(2)}</td>
+                                <tr key={idx} className="border-b border-border last:border-0 hover:bg-black/5 dark:hover:bg-white/5">
+                                  <td className="px-4 py-3 text-textMain font-medium">{item.name}</td>
+                                  <td className="px-4 py-3 text-textMuted">${item.price.toFixed(2)}</td>
+                                  <td className="px-4 py-3 text-textMuted">{item.quantity}</td>
+                                  <td className="px-4 py-3 text-textMain font-bold">${(item.price * item.quantity).toFixed(2)}</td>
                                   <td className="px-4 py-3 text-right">
-                                    <button onClick={() => handleRemoveItem(idx)} className="text-zinc-500 hover:text-rose-500 transition">
+                                    <button onClick={() => handleRemoveItem(idx)} className="text-textMuted hover:text-rose-500 transition">
                                       <Trash2 className="w-4 h-4" />
                                     </button>
                                   </td>
@@ -310,17 +353,17 @@ export default function OrderForm() {
                       )}
 
                       {isAddingItem && (
-                        <div className="p-4 border border-border bg-zinc-900/50 rounded-lg space-y-4">
-                          <h4 className="text-sm font-medium text-white mb-2">Select Product</h4>
+                        <div className="p-4 border border-border bg-black/5 dark:bg-white/5 rounded-lg space-y-4">
+                          <h4 className="text-sm font-medium text-textMain mb-2">Select Product</h4>
                           <div className="flex flex-col sm:flex-row gap-3">
                             <div className="flex-1">
                               <select 
-                                className="w-full bg-zinc-900 border border-zinc-700 rounded-md px-3 py-2 text-sm text-white focus:ring-primary focus:border-primary"
+                                className="w-full bg-card border border-border rounded-md px-3 py-2 text-sm text-textMain focus:ring-primary focus:border-primary"
                                 value={selectedProductId}
                                 onChange={(e) => setSelectedProductId(e.target.value)}
                               >
                                 <option value="" disabled>Choose a product...</option>
-                                {getAvailableProducts().map(p => {
+                                {products.map(p => {
                                   const priceNum = typeof p.price === 'string' ? Number(p.price.replace(/[^0-9.-]+/g, "")) : p.price;
                                   return (
                                     <option key={p.id} value={p.id}>{p.name} - ${priceNum.toFixed(2)}</option>
@@ -351,21 +394,21 @@ export default function OrderForm() {
 
               {currentStep === 3 && (
                 <div className="space-y-6">
-                  <h3 className="text-lg font-medium text-white mb-4">Finalize Order</h3>
+                  <h3 className="text-lg font-medium text-textMain mb-4">Finalize Order</h3>
                   <div className="space-y-4">
                      <div className="space-y-2">
-                       <label className="text-sm font-medium text-zinc-300">Shipping Method</label>
-                       <select className="w-full bg-zinc-900 border border-zinc-700 rounded-md px-3 py-2 text-sm text-white focus:ring-primary focus:border-primary">
+                       <label className="text-sm font-medium text-textMuted">Shipping Method</label>
+                       <select className="w-full bg-card border border-border rounded-md px-3 py-2 text-sm text-textMain focus:ring-primary focus:border-primary">
                          <option>Standard Shipping (3-5 days)</option>
                          <option>Express Shipping (1-2 days)</option>
                          <option>Overnight Delivery</option>
                        </select>
                      </div>
                      <div className="space-y-2">
-                       <label className="text-sm font-medium text-zinc-300">Order Notes</label>
+                       <label className="text-sm font-medium text-textMuted">Order Notes</label>
                        <textarea 
                          rows={4}
-                         className="w-full bg-zinc-900 border border-zinc-700 rounded-md px-3 py-2 text-sm text-white focus:ring-primary focus:border-primary placeholder:text-zinc-500"
+                         className="w-full bg-card border border-border rounded-md px-3 py-2 text-sm text-textMain focus:ring-primary focus:border-primary placeholder:text-textMuted"
                          placeholder="Any special instructions?"
                        ></textarea>
                      </div>
@@ -375,7 +418,7 @@ export default function OrderForm() {
             </motion.div>
           </AnimatePresence>
 
-          <div className="p-6 bg-zinc-900/50 border-t border-border flex justify-between">
+          <div className="p-6 bg-black/5 dark:bg-white/5 border-t border-border flex justify-between">
             <Button 
                variant="ghost" 
                onClick={handleBack}
@@ -390,7 +433,7 @@ export default function OrderForm() {
                 Continue to Step {currentStep + 1} <ChevronRight className="w-4 h-4 ml-2" />
               </Button>
             ) : (
-              <Button onClick={handleSubmit} className="bg-emerald-500 hover:bg-emerald-600 text-white">
+              <Button onClick={handleSubmit} className="bg-emerald-500 hover:bg-emerald-600 text-white shadow-md">
                 <Check className="w-4 h-4 mr-2" /> {isEditing ? 'Save Changes' : 'Create Order'}
               </Button>
             )}

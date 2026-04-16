@@ -11,13 +11,16 @@ export default {
         sans: ['Inter', 'system-ui', 'sans-serif'],
       },
       colors: {
-        // SaaS gradient-based UI base palette
-        background: '#09090b', // zinc-950
-        card: '#18181b', // zinc-900
-        border: '#27272a', // zinc-800
+        background: 'var(--background)',
+        card: 'var(--card)',
+        border: 'var(--border)',
+        textMain: 'var(--text-main)',
+        textMuted: 'var(--text-muted)',
+        sidebar: 'var(--sidebar)',
         primary: {
-          DEFAULT: '#6366f1', // indigo-500
-          hover: '#4f46e5', // indigo-600
+          DEFAULT: 'var(--primary)',
+          hover: 'var(--primary-hover)',
+          foreground: 'var(--primary-text)',
         },
         secondary: {
           DEFAULT: '#27272a',

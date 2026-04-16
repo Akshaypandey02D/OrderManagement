@@ -1,215 +1,267 @@
 import { useState, useEffect } from 'react';
 import { Outlet, NavLink, useLocation } from 'react-router-dom';
-import { LayoutDashboard, ShoppingCart, PlusCircle, Bell, Search, Menu, X, User, Package } from 'lucide-react';
+import { LayoutDashboard, ShoppingCart, PlusCircle, Bell, Search, Menu, X, User, Package, CheckCircle2, XOctagon, AlertTriangle, Sun, Moon } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
+import { useAppContext } from '../core/AppContext';
 
 export default function DashboardLayout() {
-  const [sidebarOpen, setSidebarOpen] = useState(() => {
-    if (typeof window !== 'undefined') {
-      return window.innerWidth > 768;
-    }
-    return true;
-  });
+  const { notifications, markNotificationsRead, toasts, theme, toggleTheme } = useAppContext();
+  const [isExpanded, setIsExpanded] = useState(true);
   const [notificationsOpen, setNotificationsOpen] = useState(false);
-  const [notifications, setNotifications] = useState([]);
   const location = useLocation();
-
-  useEffect(() => {
-    const loadNotifications = () => {
-      const saved = localStorage.getItem('mockNotifications');
-      if (saved) setNotifications(JSON.parse(saved));
-    };
-    loadNotifications();
-    window.addEventListener('dashboard-notifications-update', loadNotifications);
-    window.addEventListener('storage', loadNotifications);
-    return () => {
-      window.removeEventListener('dashboard-notifications-update', loadNotifications);
-      window.removeEventListener('storage', loadNotifications);
-    };
-  }, []);
 
   const unreadCount = notifications.filter(n => !n.read).length;
 
   const handleOpenNotifications = () => {
     setNotificationsOpen(!notificationsOpen);
     if (!notificationsOpen && unreadCount > 0) {
-      const updated = notifications.map(n => ({ ...n, read: true }));
-      setNotifications(updated);
-      localStorage.setItem('mockNotifications', JSON.stringify(updated));
+      markNotificationsRead();
     }
   };
 
   useEffect(() => {
     const handleResize = () => {
-      if (window.innerWidth > 768) {
-        setSidebarOpen(true);
+      if (window.innerWidth < 1024) {
+        setIsExpanded(false);
       } else {
-        setSidebarOpen(false);
+        setIsExpanded(true);
       }
     };
+    handleResize(); // Initial check
     window.addEventListener('resize', handleResize);
     return () => window.removeEventListener('resize', handleResize);
   }, []);
 
-  useEffect(() => {
-    if (window.innerWidth <= 768) {
-      setSidebarOpen(false);
-    }
-  }, [location.pathname]);
-
   const navItems = [
     { name: 'Dashboard', path: '/dashboard', icon: LayoutDashboard },
     { name: 'Products', path: '/products', icon: Package },
+    { name: 'Low Stock', path: '/low-stock', icon: AlertTriangle },
     { name: 'Orders Listing', path: '/orders', icon: ShoppingCart },
     { name: 'Create Order', path: '/orders/new', icon: PlusCircle },
   ];
 
+  const sidebarWidth = isExpanded ? 'w-72' : 'w-20';
+
   return (
-    <div className="flex h-screen overflow-hidden bg-background">
-      {/* Mobile Overlay */}
-      <AnimatePresence>
-        {sidebarOpen && (
-          <motion.div
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            exit={{ opacity: 0 }}
-            onClick={() => setSidebarOpen(false)}
-            className="fixed inset-0 bg-black/60 backdrop-blur-sm z-40 md:hidden"
-          />
-        )}
-      </AnimatePresence>
+    <div className="flex h-screen overflow-hidden bg-background text-textMain selection:bg-primary/30">
+      {/* Dynamic Sidebar */}
+      <motion.aside
+        animate={{ width: isExpanded ? 288 : 80 }}
+        transition={{ type: 'spring', stiffness: 300, damping: 30 }}
+        className={`relative flex flex-col h-full bg-card shadow-[4px_0_24px_rgba(0,0,0,0.02)] dark:shadow-[4px_0_24px_rgba(0,0,0,0.2)] z-50 transition-colors duration-500`}
+      >
+        {/* Sidebar Logo Area */}
+        <div className="flex items-center px-6 h-20 shrink-0">
+          <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-primary to-indigo-600 flex items-center justify-center shadow-lg shadow-primary/20 shrink-0">
+            <span className="text-white font-black text-xl">F</span>
+          </div>
+          <AnimatePresence>
+            {isExpanded && (
+              <motion.h1
+                initial={{ opacity: 0, x: -10 }}
+                animate={{ opacity: 1, x: 0 }}
+                exit={{ opacity: 0, x: -10 }}
+                className="ml-3 text-xl font-black tracking-tight whitespace-nowrap"
+              >
+                FastFleet<span className="text-primary">.</span>
+              </motion.h1>
+            )}
+          </AnimatePresence>
+        </div>
 
-      {/* Sidebar */}
-      <AnimatePresence>
-        {sidebarOpen && (
-          <motion.aside
-            initial={{ x: -300 }}
-            animate={{ x: 0 }}
-            exit={{ x: -300 }}
-            transition={{ type: 'spring', bounce: 0, duration: 0.4 }}
-            className="fixed inset-y-0 left-0 md:relative flex flex-col w-64 h-full border-r border-border bg-zinc-950 md:bg-card/50 glass z-50 md:z-20 shrink-0"
+        {/* Navigation Items */}
+        <nav className="flex-1 px-4 py-8 space-y-2  no-scrollbar">
+          {navItems.map((item) => {
+            const Icon = item.icon;
+            const isActive = location.pathname === item.path || (item.path !== '/dashboard' && location.pathname.startsWith(item.path));
+
+            return (
+              <NavLink
+                key={item.name}
+                to={item.path}
+                className={() =>
+                  `flex items-center h-12 rounded-xl transition-all duration-300 group relative ${isActive
+                    ? 'bg-primary text-white shadow-xl shadow-primary/30'
+                    : 'text-textMuted hover:text-textMain hover:bg-primary/5'
+                  }`
+                }
+              >
+                <div className={`flex items-center justify-center ${isExpanded ? 'w-12 mx-0' : 'w-full'} shrink-0`}>
+                  <Icon className={`w-5 h-5 transition-transform duration-300 ${isActive ? 'scale-110' : 'group-hover:scale-110'}`} />
+                </div>
+
+                <AnimatePresence>
+                  {isExpanded && (
+                    <motion.span
+                      initial={{ opacity: 0, x: -10 }}
+                      animate={{ opacity: 1, x: 0 }}
+                      exit={{ opacity: 0, x: -10 }}
+                      className="font-bold text-sm tracking-wide whitespace-nowrap ml-1"
+                    >
+                      {item.name}
+                    </motion.span>
+                  )}
+                </AnimatePresence>
+
+                {!isExpanded && (
+                  <div className="absolute left-full ml-6 px-3 py-2 bg-textMain text-background text-xs font-bold rounded-lg opacity-0 group-hover:opacity-100 pointer-events-none transition-all duration-300 whitespace-nowrap z-[100] translate-x-3 group-hover:translate-x-0 shadow-2xl">
+                    {item.name}
+                  </div>
+                )}
+              </NavLink>
+            );
+          })}
+        </nav>
+
+        {/* Sidebar Expansion Toggle at Bottom */}
+        <div className="p-4 mt-auto">
+          <button
+            onClick={() => setIsExpanded(!isExpanded)}
+            className={`w-full h-12 flex items-center shadow-sm rounded-xl transition-all duration-300 ${
+              isExpanded 
+                ? 'bg-primary/10 text-primary hover:bg-primary hover:text-white px-4' 
+                : 'justify-center bg-primary/10 text-primary hover:bg-primary hover:text-white'
+            }`}
           >
-            <div className="flex items-center justify-center h-16 border-b border-border">
-              <h1 className="text-xl font-bold bg-clip-text text-transparent bg-gradient-to-r from-primary to-accent">
-                OrderFlow
-              </h1>
-            </div>
-            
-            <nav className="flex-1 px-4 py-6 space-y-2">
-              {navItems.map((item) => {
-                const Icon = item.icon;
-                const isActive = location.pathname === item.path || (item.path !== '/dashboard' && location.pathname.startsWith(item.path));
-                
-                return (
-                  <NavLink
-                    key={item.name}
-                    to={item.path}
-                    className={({ isActive }) =>
-                      `flex items-center space-x-3 px-3 py-2.5 rounded-lg transition-all duration-200 group relative ${
-                        isActive
-                          ? 'text-white bg-primary/10'
-                          : 'text-zinc-400 hover:text-white hover:bg-zinc-800/50'
-                      }`
-                    }
-                  >
-                    {({ isActive }) => (
-                      <>
-                        {isActive && (
-                          <motion.div
-                            layoutId="active-nav-indicator"
-                            className="absolute left-0 w-1 h-6 bg-primary rounded-r-md"
-                            initial={false}
-                            transition={{ type: "spring", bounce: 0.2, duration: 0.6 }}
-                          />
-                        )}
-                        <Icon className={`w-5 h-5 ${isActive ? 'text-primary' : 'text-zinc-400 group-hover:text-zinc-300'}`} />
-                        <span className="font-medium text-sm">{item.name}</span>
-                      </>
-                    )}
-                  </NavLink>
-                );
-              })}
-            </nav>
-          </motion.aside>
-        )}
-      </AnimatePresence>
-
-      <div className="flex flex-col flex-1 min-w-0 overflow-hidden">
-        {/* Topbar */}
-        <header className="flex items-center justify-between h-16 px-6 border-b border-border bg-card/30 backdrop-blur-sm z-10 sticky top-0">
-          <div className="flex items-center">
-            <button
-              onClick={() => setSidebarOpen(!sidebarOpen)}
-              className="p-2 mr-4 text-zinc-400 rounded-md hover:text-white hover:bg-zinc-800 focus:outline-none focus:ring-2 focus:ring-primary"
-            >
+            {isExpanded ? (
+              <>
+                <X className="w-5 h-5 shrink-0" />
+                <motion.span 
+                  initial={{ opacity: 0, x: -10 }}
+                  animate={{ opacity: 1, x: 0 }}
+                  className="ml-3 font-bold text-sm whitespace-nowrap"
+                >
+                  Collapse Sidebar
+                </motion.span>
+              </>
+            ) : (
               <Menu className="w-5 h-5" />
+            )}
+          </button>
+        </div>
+      </motion.aside>
+
+      {/* Main Viewport */}
+      <div className="flex flex-col flex-1 min-w-0 bg-background/50 relative">
+        <header className="flex items-center justify-between h-20 px-8 bg-transparent z-40 transition-all duration-300">
+          <div className="flex items-center gap-4">
+            {/* Dynamic Breadcrumb Placeholder */}
+            <div className="h-2 w-2 rounded-full bg-primary animate-pulse" />
+            <span className="text-sm font-black uppercase tracking-widest text-textMuted opacity-50">System Console</span>
+          </div>
+
+          <div className="flex items-center gap-4 p-2 bg-card/40 backdrop-blur-xl rounded-2xl shadow-sm border border-white/10 dark:border-white/5">
+            <button
+              onClick={toggleTheme}
+              className="p-2.5 text-textMuted hover:text-textMain hover:bg-white/10 rounded-xl transition-all duration-300"
+              title="Toggle Theme"
+            >
+              <AnimatePresence mode="wait" initial={false}>
+                <motion.div
+                  key={theme}
+                  initial={{ rotate: -90, opacity: 0, scale: 0.5 }}
+                  animate={{ rotate: 0, opacity: 1, scale: 1 }}
+                  exit={{ rotate: 90, opacity: 0, scale: 0.5 }}
+                  transition={{ duration: 0.3 }}
+                >
+                  {theme === 'dark' ? <Sun className="w-5 h-5" /> : <Moon className="w-5 h-5" />}
+                </motion.div>
+              </AnimatePresence>
             </button>
 
-          </div>
-          
-          <div className="flex items-center space-x-4">
             <div className="relative">
-              <button 
+              <button
                 onClick={handleOpenNotifications}
-                className="relative p-2 text-zinc-400 hover:text-white transition-colors"
-                title="Notifications"
+                className="relative p-2.5 text-textMuted hover:text-textMain hover:bg-white/10 rounded-xl transition-all duration-300"
               >
                 <Bell className="w-5 h-5" />
                 {unreadCount > 0 && (
-                  <span className="absolute top-1 right-1 w-2.5 h-2.5 bg-rose-500 rounded-full ring-2 ring-background animate-pulse"></span>
+                  <span className="absolute top-2.5 right-2.5 w-2 h-2 bg-rose-500 rounded-full ring-2 ring-card"></span>
                 )}
               </button>
               <AnimatePresence>
                 {notificationsOpen && (
                   <motion.div
-                    initial={{ opacity: 0, y: 10, scale: 0.95 }}
+                    initial={{ opacity: 0, y: 15, scale: 0.95 }}
                     animate={{ opacity: 1, y: 0, scale: 1 }}
-                    exit={{ opacity: 0, y: 10, scale: 0.95 }}
-                    className="absolute right-0 mt-2 w-80 bg-zinc-900 border border-border shadow-xl rounded-xl overflow-hidden z-50 text-left flex flex-col"
+                    exit={{ opacity: 0, y: 15, scale: 0.95 }}
+                    className="absolute right-0 mt-4 w-80 bg-card dark:bg-zinc-900 shadow-2xl rounded-2xl border border-border overflow-hidden z-[100]"
                   >
-                     <div className="p-3 border-b border-border font-medium text-white text-sm bg-zinc-800/50 flex justify-between items-center">
-                       <span>Notifications</span>
-                       {unreadCount > 0 && <span className="px-2 py-0.5 rounded-full bg-primary/20 text-primary text-xs">{unreadCount} new</span>}
-                     </div>
-                     <div className="max-h-64 overflow-y-auto">
-                       {notifications.length === 0 ? (
-                         <div className="p-4 text-center text-sm text-zinc-500">No notifications yet.</div>
-                       ) : (
-                         notifications.map(n => (
-                           <div key={n.id} className="p-3 border-b border-zinc-800/50 last:border-0 hover:bg-zinc-800/30 transition-colors">
-                             <div className="flex items-start">
-                               <div className={`mt-1.5 w-2 h-2 rounded-full mr-3 shrink-0 ${n.type === 'success' ? 'bg-emerald-500' : 'bg-rose-500'}`} />
-                               <div>
-                                 <p className="text-sm text-zinc-200 leading-tight">{n.message}</p>
-                                 <p className="text-xs text-zinc-500 mt-1.5">{n.time}</p>
-                               </div>
-                             </div>
-                           </div>
-                         ))
-                       )}
-                     </div>
+                    <div className="p-4 border-b border-white/5 font-black text-textMain text-xs uppercase tracking-widest flex justify-between items-center">
+                      <span>Pulse Feed</span>
+                      {unreadCount > 0 && <span className="px-2 py-0.5 rounded-full bg-primary text-white text-[10px]">{unreadCount}</span>}
+                    </div>
+                    <div className="max-h-80 overflow-y-auto no-scrollbar pb-2">
+                      {notifications.length === 0 ? (
+                        <div className="p-8 text-center text-xs text-textMuted font-medium italic">No incoming data packets.</div>
+                      ) : (
+                        notifications.map(n => (
+                          <div key={n.id} className="p-4 border-b border-white/5 last:border-0 hover:bg-white/5 transition-all">
+                            <div className="flex gap-4">
+                              <div className={`w-1.5 h-1.5 rounded-full mt-1.5 shrink-0 ${n.type === 'success' ? 'bg-emerald-500 shadow-[0_0_10px_#10b981]' : 'bg-rose-500 shadow-[0_0_10px_#f43f5e]'}`} />
+                              <div>
+                                <p className="text-sm text-textMain font-bold leading-tight">{n.message}</p>
+                                <p className="text-[10px] text-textMuted font-black opacity-40 mt-1 uppercase">{n.time}</p>
+                              </div>
+                            </div>
+                          </div>
+                        ))
+                      )}
+                    </div>
                   </motion.div>
                 )}
               </AnimatePresence>
             </div>
-            <div className="flex items-center space-x-2 pl-4 border-l border-border">
-              <div className="w-8 h-8 rounded-full bg-gradient-to-tr from-primary to-accent flex items-center justify-center text-white">
+
+            <div className="flex items-center gap-3 px-4 py-1.5 bg-primary/10 rounded-xl border border-primary/20 group cursor-pointer transition-all duration-300 hover:bg-primary/20">
+              <div className="w-7 h-7 rounded-lg bg-primary flex items-center justify-center text-white shadow-lg shadow-primary/20">
                 <User className="w-4 h-4" />
               </div>
-              <span className="hidden md:block text-sm font-medium text-zinc-200">Admin</span>
+              <div className="hidden xl:block">
+                <p className="text-[10px] font-black uppercase text-primary tracking-tighter leading-none">Access Level</p>
+                <p className="text-xs font-bold text-textMain mt-0.5">Administrator</p>
+              </div>
             </div>
           </div>
         </header>
 
-        {/* Main Content Area */}
-        <main className="flex-1 overflow-y-auto overflow-x-hidden p-6 relative">
+        {/* Global Toast Alerts */}
+        <div className="fixed bottom-8 right-8 z-[200] flex flex-col gap-4 pointer-events-none">
+          <AnimatePresence mode="popLayout">
+            {toasts.map(toast => (
+              <motion.div
+                key={toast.id}
+                layout
+                initial={{ opacity: 0, x: 100, scale: 0.8 }}
+                animate={{ opacity: 1, x: 0, scale: 1 }}
+                exit={{ opacity: 0, x: 20, scale: 0.8 }}
+                className={`pointer-events-auto flex items-center gap-4 p-4 rounded-2xl shadow-2xl backdrop-blur-2xl border ${toast.type === 'success' ? 'bg-emerald-500/10 border-emerald-500/20' : toast.type === 'danger' ? 'bg-rose-500/10 border-rose-500/20' : 'bg-primary/10 border-primary/20'}`}
+              >
+                <div className={`w-10 h-10 rounded-xl flex items-center justify-center ${toast.type === 'success' ? 'bg-emerald-500 shadow-lg shadow-emerald-500/20 text-white' : toast.type === 'danger' ? 'bg-rose-500 shadow-lg shadow-rose-500/20 text-white' : 'bg-primary shadow-lg shadow-primary/20 text-white'}`}>
+                  {toast.type === 'success' ? <CheckCircle2 className="w-5 h-5" /> : toast.type === 'danger' ? <XOctagon className="w-5 h-5" /> : <Bell className="w-5 h-5" />}
+                </div>
+                <div>
+                  <h5 className="text-xs font-black uppercase tracking-widest opacity-40 leading-none mb-1">{toast.type || 'info'}</h5>
+                  <p className="text-sm font-bold text-textMain">{toast.msg}</p>
+                </div>
+              </motion.div>
+            ))}
+          </AnimatePresence>
+        </div>
+
+        {/* Viewport Content */}
+        <main className="flex-1 overflow-y-auto overflow-x-hidden relative p-8">
+          {/* Decorative Background Elements */}
+          <div className="absolute top-0 right-0 w-[500px] h-[500px] bg-primary/5 rounded-full blur-[120px] -z-10 animate-pulse pointer-events-none" />
+          <div className="absolute bottom-0 left-0 w-[300px] h-[300px] bg-indigo-500/5 rounded-full blur-[100px] -z-10 pointer-events-none" />
+
           <AnimatePresence mode="wait">
             <motion.div
               key={location.pathname}
-              initial={{ opacity: 0, y: 10 }}
-              animate={{ opacity: 1, y: 0 }}
-              exit={{ opacity: 0, y: -10 }}
-              transition={{ duration: 0.3 }}
+              initial={{ opacity: 0, y: 20, filter: 'blur(10px)' }}
+              animate={{ opacity: 1, y: 0, filter: 'blur(0px)' }}
+              exit={{ opacity: 0, y: -20, filter: 'blur(10px)' }}
+              transition={{ duration: 0.5, ease: 'circOut' }}
               className="max-w-7xl mx-auto h-full"
             >
               <Outlet />
