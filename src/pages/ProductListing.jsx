@@ -26,8 +26,8 @@ export default function ProductListing() {
   };
 
   const filteredProducts = products.filter(p => {
-    const matchesSearch = p.name.toLowerCase().includes(search.toLowerCase()) || 
-                          p.sku.toLowerCase().includes(search.toLowerCase());
+    const matchesSearch = p.name.toLowerCase().includes(search.toLowerCase()) ||
+      p.sku.toLowerCase().includes(search.toLowerCase());
     const matchesStatus = statusFilter === 'All Statuses' || p.status === statusFilter;
     return matchesSearch && matchesStatus;
   });
@@ -63,7 +63,7 @@ export default function ProductListing() {
           />
         </div>
         <div className="flex items-center gap-2">
-          <select 
+          <select
             className="bg-card border border-border text-textMain rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary appearance-none"
             value={statusFilter}
             onChange={(e) => setStatusFilter(e.target.value)}
@@ -101,43 +101,43 @@ export default function ProductListing() {
                 )}
                 <AnimatePresence>
                   {filteredProducts.map((product, i) => (
-                    <motion.tr 
+                    <motion.tr
                       layout
                       initial={{ opacity: 0, y: 10 }}
                       animate={{ opacity: 1, y: 0 }}
                       exit={{ opacity: 0, x: -20, backgroundColor: 'rgba(244, 63, 94, 0.1)' }}
                       transition={{ duration: 0.2 }}
-                      key={product.id} 
+                      key={product.id}
                       className="border-b border-border hover:bg-black/5 dark:hover:bg-white/5 transition-all group"
                     >
-                    <td className="px-6 py-4 font-medium text-textMain">{product.id}</td>
-                    <td className="px-6 py-4 font-semibold text-textMain flex items-center gap-3">
-                      <div className="w-8 h-8 rounded-md bg-black/5 dark:bg-white/5 border border-border flex items-center justify-center">
-                        <Package className="w-4 h-4 text-textMuted" />
-                      </div>
-                      {product.name}
-                    </td>
-                    <td className="px-6 py-4 text-textMuted">{product.sku}</td>
-                    <td className="px-6 py-4 text-textMain font-medium">{product.price}</td>
-                    <td className="px-6 py-4 text-textMain">{product.stock}</td>
-                    <td className="px-6 py-4">
-                      <Badge variant={statusStyles[product.status]}>{product.status}</Badge>
-                    </td>
-                    <td className="px-6 py-4 text-right">
-                      <div className="flex items-center justify-end space-x-2 opacity-0 group-hover:opacity-100 transition-opacity">
-                        <Link to={`/products/${product.id}/edit`}>
-                          <button className="p-1.5 text-textMuted hover:text-textMain rounded-md hover:bg-black/10 dark:hover:bg-white/10 transition">
-                            <Edit className="w-4 h-4" />
+                      <td className="px-6 py-4 font-medium text-textMain">{product.id}</td>
+                      <td className="px-6 py-4 font-semibold text-textMain flex items-center gap-3">
+                        <div className="w-8 h-8 rounded-md bg-black/5 dark:bg-white/5 border border-border flex items-center justify-center">
+                          <Package className="w-4 h-4 text-textMuted" />
+                        </div>
+                        {product.name}
+                      </td>
+                      <td className="px-6 py-4 text-textMuted">{product.sku}</td>
+                      <td className="px-6 py-4 text-textMain font-medium">{product.price}</td>
+                      <td className="px-6 py-4 text-textMain">{product.stock}</td>
+                      <td className="px-6 py-4">
+                        <Badge variant={statusStyles[product.status]}>{product.status}</Badge>
+                      </td>
+                      <td className="px-6 py-4 text-right">
+                        <div className="flex items-center justify-end space-x-2 opacity-0 group-hover:opacity-100 transition-opacity">
+                          <Link to={`/products/${product.id}/edit`}>
+                            <button className="p-1.5 text-textMuted hover:text-textMain rounded-md hover:bg-black/10 dark:hover:bg-white/10 transition">
+                              <Edit className="w-4 h-4" />
+                            </button>
+                          </Link>
+                          <button
+                            onClick={() => handleDelete(product.id)}
+                            className="p-1.5 text-textMuted hover:text-rose-500 rounded-md hover:bg-black/10 dark:hover:bg-white/10 transition"
+                          >
+                            <Trash2 className="w-4 h-4" />
                           </button>
-                        </Link>
-                        <button 
-                          onClick={() => handleDelete(product.id)}
-                          className="p-1.5 text-textMuted hover:text-rose-500 rounded-md hover:bg-black/10 dark:hover:bg-white/10 transition"
-                        >
-                          <Trash2 className="w-4 h-4" />
-                        </button>
-                      </div>
-                    </td>
+                        </div>
+                      </td>
                     </motion.tr>
                   ))}
                 </AnimatePresence>
@@ -160,45 +160,45 @@ export default function ProductListing() {
                 transition={{ duration: 0.2 }}
                 key={product.id}
               >
-              <Card className="glass relative group hover:border-primary/50 transition-colors">
-                <div className="p-5">
-                  <div className="flex justify-between items-start mb-4">
-                    <div className="flex items-center gap-3">
+                <Card className="glass relative group hover:border-primary/50 transition-colors">
+                  <div className="p-5">
+                    <div className="flex justify-between items-start mb-4">
+                      <div className="flex items-center gap-3">
                         <div className="w-10 h-10 rounded-lg bg-black/5 dark:bg-white/5 border border-border flex items-center justify-center shrink-0">
-                            <Package className="w-5 h-5 text-textMuted" />
+                          <Package className="w-5 h-5 text-textMuted" />
                         </div>
                         <div>
-                            <h3 className="font-semibold text-textMain">{product.name}</h3>
-                            <p className="text-xs text-textMuted">{product.sku}</p>
+                          <h3 className="font-semibold text-textMain">{product.name}</h3>
+                          <p className="text-xs text-textMuted">{product.sku}</p>
                         </div>
+                      </div>
+                      <Badge variant={statusStyles[product.status]}>{product.status}</Badge>
                     </div>
-                    <Badge variant={statusStyles[product.status]}>{product.status}</Badge>
+                    <div className="space-y-2 text-sm text-textMain mt-6 font-medium">
+                      <div className="flex justify-between">
+                        <span className="text-textMuted">Price</span>
+                        <span>{product.price}</span>
+                      </div>
+                      <div className="flex justify-between">
+                        <span className="text-textMuted">Stock</span>
+                        <span>{product.stock} units</span>
+                      </div>
+                    </div>
+                    <div className="mt-4 pt-4 border-t border-border flex justify-between items-center z-20 relative">
+                      <span className="text-xs text-textMuted">ID: {product.id}</span>
+                      <div className="flex space-x-1">
+                        <Link to={`/products/${product.id}/edit`}>
+                          <button className="p-1.5 text-textMuted hover:text-textMain transition z-20"><Edit className="w-4 h-4" /></button>
+                        </Link>
+                        <button
+                          onClick={(e) => { e.preventDefault(); handleDelete(product.id); }}
+                          className="p-1.5 text-rose-500 hover:text-rose-400 transition z-20"
+                        >
+                          <Trash2 className="w-4 h-4" />
+                        </button>
+                      </div>
+                    </div>
                   </div>
-                  <div className="space-y-2 text-sm text-textMain mt-6 font-medium">
-                    <div className="flex justify-between">
-                      <span className="text-textMuted">Price</span>
-                      <span>{product.price}</span>
-                    </div>
-                    <div className="flex justify-between">
-                      <span className="text-textMuted">Stock</span>
-                      <span>{product.stock} units</span>
-                    </div>
-                  </div>
-                  <div className="mt-4 pt-4 border-t border-border flex justify-between items-center z-20 relative">
-                    <span className="text-xs text-textMuted">ID: {product.id}</span>
-                    <div className="flex space-x-1">
-                      <Link to={`/products/${product.id}/edit`}>
-                        <button className="p-1.5 text-textMuted hover:text-textMain transition z-20"><Edit className="w-4 h-4"/></button>
-                      </Link>
-                      <button 
-                        onClick={(e) => { e.preventDefault(); handleDelete(product.id); }}
-                        className="p-1.5 text-rose-500 hover:text-rose-400 transition z-20"
-                      >
-                        <Trash2 className="w-4 h-4"/>
-                      </button>
-                    </div>
-                  </div>
-                </div>
                 </Card>
               </motion.div>
             ))}

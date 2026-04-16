@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react';
 import { Outlet, NavLink, useLocation } from 'react-router-dom';
 import { LayoutDashboard, ShoppingCart, PlusCircle, Bell, Search, Menu, X, User, Package, CheckCircle2, XOctagon, AlertTriangle, Sun, Moon } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
+import { Suspense } from 'react';
 import { useAppContext } from '../core/AppContext';
 
 export default function DashboardLayout() {
@@ -117,16 +118,15 @@ export default function DashboardLayout() {
         <div className="p-4 mt-auto">
           <button
             onClick={() => setIsExpanded(!isExpanded)}
-            className={`w-full h-12 flex items-center shadow-sm rounded-xl transition-all duration-300 ${
-              isExpanded 
-                ? 'bg-primary/10 text-primary hover:bg-primary hover:text-white px-4' 
-                : 'justify-center bg-primary/10 text-primary hover:bg-primary hover:text-white'
-            }`}
+            className={`w-full h-12 flex items-center shadow-sm rounded-xl transition-all duration-300 ${isExpanded
+              ? 'bg-primary/10 text-primary hover:bg-primary hover:text-white px-4'
+              : 'justify-center bg-primary/10 text-primary hover:bg-primary hover:text-white'
+              }`}
           >
             {isExpanded ? (
               <>
                 <X className="w-5 h-5 shrink-0" />
-                <motion.span 
+                <motion.span
                   initial={{ opacity: 0, x: -10 }}
                   animate={{ opacity: 1, x: 0 }}
                   className="ml-3 font-bold text-sm whitespace-nowrap"
@@ -255,18 +255,13 @@ export default function DashboardLayout() {
           <div className="absolute top-0 right-0 w-[500px] h-[500px] bg-primary/5 rounded-full blur-[120px] -z-10 animate-pulse pointer-events-none" />
           <div className="absolute bottom-0 left-0 w-[300px] h-[300px] bg-indigo-500/5 rounded-full blur-[100px] -z-10 pointer-events-none" />
 
-          <AnimatePresence mode="wait">
-            <motion.div
-              key={location.pathname}
-              initial={{ opacity: 0, y: 20, filter: 'blur(10px)' }}
-              animate={{ opacity: 1, y: 0, filter: 'blur(0px)' }}
-              exit={{ opacity: 0, y: -20, filter: 'blur(10px)' }}
-              transition={{ duration: 0.5, ease: 'circOut' }}
-              className="max-w-7xl mx-auto h-full"
-            >
-              <Outlet />
-            </motion.div>
-          </AnimatePresence>
+          <Suspense fallback={
+            <div className="flex flex-col items-center justify-center h-full min-h-[400px]">
+              <div className="w-10 h-10 border-4 border-primary/20 border-t-primary rounded-full animate-spin" />
+            </div>
+          }>
+            <Outlet />
+          </Suspense>
         </main>
       </div>
     </div>
