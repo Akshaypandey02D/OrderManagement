@@ -217,13 +217,12 @@ export default function OrderForm() {
       </div>
 
       {/* Stepper */}
-      {/* Enhanced Stepper */}
-      <div className="relative mb-16 max-w-2xl mx-auto px-2">
+      <div className="relative mb-8 md:mb-16 max-w-2xl mx-auto px-2">
         {/* Background Track */}
-        <div className="absolute top-6 left-6 right-6 h-1.5 bg-border rounded-full z-0" />
+        <div className="absolute top-6 left-6 right-6 h-1 bg-border rounded-full z-0" />
         
         {/* Animated Progress Fill */}
-        <div className="absolute top-6 left-6 h-1.5 bg-primary rounded-full z-0 transition-all duration-700 ease-out" 
+        <div className="absolute top-6 left-6 h-1 bg-primary rounded-full z-0 transition-all duration-700 ease-out" 
              style={{ width: `calc(${((currentStep - 1) / 2) * 100}% - ${currentStep === 1 ? '0px' : '24px'})` }} />
         
         <div className="relative z-10 flex justify-between">
@@ -234,16 +233,18 @@ export default function OrderForm() {
             
             return (
               <div key={step.id} className="flex flex-col items-center">
-                <div className={`w-12 h-12 rounded-full flex items-center justify-center border-4 transition-all duration-500 ease-in-out ${
+                <div className={`w-10 h-10 md:w-12 md:h-12 rounded-full flex items-center justify-center border-2 md:border-4 transition-all duration-500 ease-in-out ${
                   isCompleted 
-                    ? 'bg-primary border-primary text-primary-foreground scale-100 shadow-md' 
+                    ? 'bg-primary border-primary text-primary-foreground shadow-md' 
                     : isCurrent 
-                      ? 'bg-background border-primary text-primary scale-110 shadow-[0_0_20px_rgba(99,102,241,0.3)]' 
-                      : 'bg-background border-border text-textMuted scale-100'
+                      ? 'bg-background border-primary text-primary shadow-[0_0_20px_rgba(99,102,241,0.3)]' 
+                      : 'bg-background border-border text-textMuted'
                 }`}>
-                  {isCompleted ? <Check className="w-6 h-6" /> : <Icon className="w-5 h-5" />}
+                  {isCompleted ? <Check className="w-5 h-5 md:w-6 md:h-6" /> : <Icon className="w-4 h-4 md:w-5 md:h-5" />}
                 </div>
-                <span className={`mt-5 text-sm font-bold transition-all duration-300 ${isCurrent ? 'text-primary scale-105' : isCompleted ? 'text-textMain' : 'text-textMuted'}`}>
+                <span className={`mt-3 md:mt-5 text-[10px] md:text-sm font-bold transition-all duration-300 ${
+                  isCurrent ? 'text-primary' : isCompleted ? 'text-textMain' : 'text-textMuted'
+                } ${isCurrent ? 'block' : 'hidden md:block'}`}>
                   {step.title}
                 </span>
               </div>
@@ -253,21 +254,24 @@ export default function OrderForm() {
       </div>
 
       {/* Form Area */}
-      <Card className="glass overflow-hidden">
+      <Card className="glass overflow-hidden shadow-xl border-white/5">
         <CardContent className="p-0">
           <AnimatePresence mode="wait">
             <motion.div
               key={currentStep}
-              initial={{ x: 50, opacity: 0 }}
+              initial={{ x: 20, opacity: 0 }}
               animate={{ x: 0, opacity: 1 }}
-              exit={{ x: -50, opacity: 0 }}
-              transition={{ duration: 0.3 }}
-              className="p-8"
+              exit={{ x: -20, opacity: 0 }}
+              transition={{ duration: 0.2 }}
+              className="p-4 md:p-8"
             >
               {currentStep === 1 && (
                 <div className="space-y-6">
-                  <h3 className="text-lg font-medium text-textMain mb-4">Customer Information</h3>
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                  <div className="flex items-center space-x-2 mb-2">
+                    <User className="w-5 h-5 text-primary" />
+                    <h3 className="text-lg font-medium text-textMain">Customer Information</h3>
+                  </div>
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4 md:gap-6">
                     <div className="space-y-2">
                        <label className="text-sm font-medium text-textMuted">Customer Name *</label>
                        <Input 
@@ -302,87 +306,132 @@ export default function OrderForm() {
 
               {currentStep === 2 && (
                 <div className="space-y-6">
-                  <div className="flex justify-between items-center mb-4">
-                    <h3 className="text-lg font-medium text-textMain">Order Items</h3>
+                  <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 mb-4">
+                    <div className="flex items-center space-x-2">
+                      <Package className="w-5 h-5 text-primary" />
+                      <h3 className="text-lg font-medium text-textMain">Order Items</h3>
+                    </div>
                     {errors.items && <span className="text-rose-500 text-sm font-medium">{errors.items}</span>}
                     {formData.orderItems?.length > 0 && !isAddingItem && (
-                      <Button variant="secondary" size="sm" onClick={() => setIsAddingItem(true)}>
+                      <Button variant="secondary" size="sm" onClick={() => setIsAddingItem(true)} className="w-full sm:w-auto">
                         <Plus className="w-4 h-4 mr-2" /> Add Item
                       </Button>
                     )}
                   </div>
 
                   {(!formData.orderItems || formData.orderItems.length === 0) && !isAddingItem ? (
-                    <div className="border border-dashed border-border rounded-lg p-8 flex flex-col items-center justify-center text-center">
-                       <Package className="w-12 h-12 text-textMuted mb-3" />
-                       <h4 className="text-textMain font-medium">No items added yet</h4>
-                       <p className="text-textMuted text-sm mt-1 mb-4">Search and select products from your inventory.</p>
-                       <Button variant="secondary" size="sm" onClick={() => setIsAddingItem(true)}>Add Product</Button>
+                    <div className="border border-dashed border-border rounded-xl p-8 md:p-12 flex flex-col items-center justify-center text-center bg-black/5 dark:bg-white/5">
+                       <div className="p-4 bg-primary/10 rounded-full mb-4">
+                        <Package className="w-8 h-8 text-primary" />
+                       </div>
+                       <h4 className="text-textMain font-medium text-lg">No items added yet</h4>
+                       <p className="text-textMuted text-sm mt-1 mb-6 max-w-xs">Search and select products from your inventory to build this order.</p>
+                       <Button variant="primary" onClick={() => setIsAddingItem(true)}>Add First Product</Button>
                     </div>
                   ) : (
                     <div className="space-y-4">
                       {formData.orderItems?.length > 0 && (
-                        <div className="border border-border rounded-lg overflow-hidden">
-                          <table className="w-full text-sm text-left">
-                            <thead className="bg-black/5 dark:bg-white/5 border-b border-border text-textMuted">
-                              <tr>
-                                <th className="px-4 py-3 font-medium">Product</th>
-                                <th className="px-4 py-3 font-medium">Price</th>
-                                <th className="px-4 py-3 font-medium">Qty</th>
-                                <th className="px-4 py-3 font-medium">Total</th>
-                                <th className="px-4 py-3 text-right"></th>
-                              </tr>
-                            </thead>
-                            <tbody>
-                              {formData.orderItems.map((item, idx) => (
-                                <tr key={idx} className="border-b border-border last:border-0 hover:bg-black/5 dark:hover:bg-white/5">
-                                  <td className="px-4 py-3 text-textMain font-medium">{item.name}</td>
-                                  <td className="px-4 py-3 text-textMuted">${item.price.toFixed(2)}</td>
-                                  <td className="px-4 py-3 text-textMuted">{item.quantity}</td>
-                                  <td className="px-4 py-3 text-textMain font-bold">${(item.price * item.quantity).toFixed(2)}</td>
-                                  <td className="px-4 py-3 text-right">
-                                    <button onClick={() => handleRemoveItem(idx)} className="text-textMuted hover:text-rose-500 transition">
-                                      <Trash2 className="w-4 h-4" />
-                                    </button>
-                                  </td>
+                        <div className=" rounded-lg overflow-hidden">
+                          {/* Mobile View: Cards */}
+                          <div className="block md:hidden space-y-3">
+                            {formData.orderItems.map((item, idx) => (
+                              <div key={idx} className="p-4 bg-card border border-border rounded-xl relative">
+                                <button 
+                                  onClick={() => handleRemoveItem(idx)} 
+                                  className="absolute top-2 right-2 p-2 text-textMuted hover:text-rose-500 transition-colors"
+                                >
+                                  <Trash2 className="w-4 h-4" />
+                                </button>
+                                <div className="space-y-1">
+                                  <h4 className="font-bold text-textMain pr-8">{item.name}</h4>
+                                  <div className="flex justify-between text-sm">
+                                    <span className="text-textMuted">Price: ${item.price.toFixed(2)}</span>
+                                    <span className="text-textMuted">Qty: {item.quantity}</span>
+                                  </div>
+                                  <div className="pt-2 flex justify-between items-center border-t border-border mt-2">
+                                    <span className="text-xs font-bold text-primary uppercase">Total</span>
+                                    <span className="font-bold text-textMain text-lg">${(item.price * item.quantity).toFixed(2)}</span>
+                                  </div>
+                                </div>
+                              </div>
+                            ))}
+                          </div>
+
+                          {/* Desktop View: Table */}
+                          <div className="hidden md:block border border-border rounded-lg">
+                            <table className="w-full text-sm text-left">
+                              <thead className="bg-black/5 dark:bg-white/5 border-b border-border text-textMuted">
+                                <tr>
+                                  <th className="px-4 py-3 font-medium text-xs uppercase tracking-wider">Product</th>
+                                  <th className="px-4 py-3 font-medium text-xs uppercase tracking-wider">Price</th>
+                                  <th className="px-4 py-3 font-medium text-xs uppercase tracking-wider text-center">Qty</th>
+                                  <th className="px-4 py-3 font-medium text-xs uppercase tracking-wider">Total</th>
+                                  <th className="px-4 py-3 text-right"></th>
                                 </tr>
-                              ))}
-                            </tbody>
-                          </table>
+                              </thead>
+                              <tbody>
+                                {formData.orderItems.map((item, idx) => (
+                                  <tr key={idx} className="border-b border-border last:border-0 hover:bg-black/5 dark:hover:bg-white/5 transition-colors">
+                                    <td className="px-4 py-3 text-textMain font-medium">{item.name}</td>
+                                    <td className="px-4 py-3 text-textMuted">${item.price.toFixed(2)}</td>
+                                    <td className="px-4 py-3 text-textMuted text-center">{item.quantity}</td>
+                                    <td className="px-4 py-3 text-textMain font-bold">${(item.price * item.quantity).toFixed(2)}</td>
+                                    <td className="px-4 py-3 text-right">
+                                      <button onClick={() => handleRemoveItem(idx)} className="p-1.5 text-textMuted hover:text-rose-500 transition-colors rounded-md hover:bg-rose-500/10">
+                                        <Trash2 className="w-4 h-4" />
+                                      </button>
+                                    </td>
+                                  </tr>
+                                ))}
+                              </tbody>
+                            </table>
+                          </div>
                         </div>
                       )}
 
                       {isAddingItem && (
-                        <div className="p-4 border border-border bg-black/5 dark:bg-white/5 rounded-lg space-y-4">
-                          <h4 className="text-sm font-medium text-textMain mb-2">Select Product</h4>
-                          <div className="flex flex-col sm:flex-row gap-3">
-                            <div className="flex-1">
-                              <select 
-                                className="w-full bg-card border border-border rounded-md px-3 py-2 text-sm text-textMain focus:ring-primary focus:border-primary"
-                                value={selectedProductId}
-                                onChange={(e) => setSelectedProductId(e.target.value)}
-                              >
-                                <option value="" disabled>Choose a product...</option>
-                                {products.map(p => {
-                                  const priceNum = typeof p.price === 'string' ? Number(p.price.replace(/[^0-9.-]+/g, "")) : p.price;
-                                  return (
-                                    <option key={p.id} value={p.id}>{p.name} - ${priceNum.toFixed(2)}</option>
-                                  )
-                                })}
-                              </select>
+                        <div className="p-4 md:p-6 border border-primary/20 bg-primary/5 rounded-xl space-y-4">
+                          <h4 className="text-sm font-bold text-textMain flex items-center">
+                            <Plus className="w-4 h-4 mr-2 text-primary" />
+                            Select Product to Add
+                          </h4>
+                          <div className="flex flex-col gap-4">
+                            <div className="grid grid-cols-1 sm:grid-cols-4 gap-4">
+                              <div className="sm:col-span-3">
+                                <label className="text-[10px] font-bold text-textMuted uppercase mb-1 block">Product</label>
+                                <select 
+                                  className="w-full bg-card border border-border rounded-lg px-3 py-2.5 text-sm text-textMain focus:ring-2 focus:ring-primary focus:border-primary outline-none"
+                                  value={selectedProductId}
+                                  onChange={(e) => setSelectedProductId(e.target.value)}
+                                >
+                                  <option value="" disabled>Choose a product from inventory...</option>
+                                  {products.map(p => {
+                                    const priceStr = typeof p.price === 'string' ? p.price : `$${p.price.toFixed(2)}`;
+                                    return (
+                                      <option key={p.id} value={p.id}>{p.name} ({priceStr})</option>
+                                    )
+                                  })}
+                                </select>
+                              </div>
+                              <div className="">
+                                <label className="text-[10px] font-bold text-textMuted uppercase mb-1 block">Quantity</label>
+                                <Input 
+                                  type="number" 
+                                  min="1" 
+                                  value={quantity} 
+                                  onChange={(e) => setQuantity(Number(e.target.value) || 1)}
+                                  placeholder="Qty"
+                                  className="h-[42px]"
+                                />
+                              </div>
                             </div>
-                            <div className="w-32">
-                              <Input 
-                                type="number" 
-                                min="1" 
-                                value={quantity} 
-                                onChange={(e) => setQuantity(Number(e.target.value) || 1)}
-                                placeholder="Qty"
-                              />
-                            </div>
-                            <div className="flex gap-2">
-                              <Button onClick={handleAddItem} disabled={!selectedProductId}>Add</Button>
-                              <Button variant="secondary" onClick={() => setIsAddingItem(false)}>Cancel</Button>
+                            <div className="flex flex-col sm:flex-row gap-3 pt-2">
+                              <Button onClick={handleAddItem} disabled={!selectedProductId} className="flex-1">
+                                Add to Order
+                              </Button>
+                              <Button variant="secondary" onClick={() => setIsAddingItem(false)} className="flex-1">
+                                Cancel
+                              </Button>
                             </div>
                           </div>
                         </div>
@@ -394,11 +443,14 @@ export default function OrderForm() {
 
               {currentStep === 3 && (
                 <div className="space-y-6">
-                  <h3 className="text-lg font-medium text-textMain mb-4">Finalize Order</h3>
+                  <div className="flex items-center space-x-2 mb-2">
+                    <CreditCard className="w-5 h-5 text-primary" />
+                    <h3 className="text-lg font-medium text-textMain">Finalize Order</h3>
+                  </div>
                   <div className="space-y-4">
                      <div className="space-y-2">
                        <label className="text-sm font-medium text-textMuted">Shipping Method</label>
-                       <select className="w-full bg-card border border-border rounded-md px-3 py-2 text-sm text-textMain focus:ring-primary focus:border-primary">
+                       <select className="w-full bg-card border border-border rounded-lg px-4 py-2.5 text-sm text-textMain focus:ring-2 focus:ring-primary focus:border-primary outline-none">
                          <option>Standard Shipping (3-5 days)</option>
                          <option>Express Shipping (1-2 days)</option>
                          <option>Overnight Delivery</option>
@@ -408,8 +460,8 @@ export default function OrderForm() {
                        <label className="text-sm font-medium text-textMuted">Order Notes</label>
                        <textarea 
                          rows={4}
-                         className="w-full bg-card border border-border rounded-md px-3 py-2 text-sm text-textMain focus:ring-primary focus:border-primary placeholder:text-textMuted"
-                         placeholder="Any special instructions?"
+                         className="w-full bg-card border border-border rounded-lg px-4 py-2.5 text-sm text-textMain focus:ring-2 focus:ring-primary focus:border-primary placeholder:text-textMuted outline-none resize-none"
+                         placeholder="Any special instructions for picking, packing, or delivery?"
                        ></textarea>
                      </div>
                   </div>
@@ -418,22 +470,24 @@ export default function OrderForm() {
             </motion.div>
           </AnimatePresence>
 
-          <div className="p-6 bg-black/5 dark:bg-white/5 border-t border-border flex justify-between">
+          <div className="p-4 md:p-6 bg-black/5 dark:bg-white/5 border-t border-border flex flex-col-reverse sm:flex-row justify-between gap-3">
             <Button 
                variant="ghost" 
                onClick={handleBack}
                disabled={currentStep === 1}
-               className={currentStep === 1 ? 'invisible' : ''}
+               className={`${currentStep === 1 ? 'hidden' : 'flex'} w-full sm:w-auto h-11 md:h-10`}
             >
               <ChevronLeft className="w-4 h-4 mr-2" /> Back
             </Button>
             
+            <div className="flex-1 hidden sm:block" />
+
             {currentStep < 3 ? (
-              <Button onClick={handleNext}>
+              <Button onClick={handleNext} className="w-full sm:w-auto h-11 md:h-10">
                 Continue to Step {currentStep + 1} <ChevronRight className="w-4 h-4 ml-2" />
               </Button>
             ) : (
-              <Button onClick={handleSubmit} className="bg-emerald-500 hover:bg-emerald-600 text-white shadow-md">
+              <Button onClick={handleSubmit} className="bg-emerald-500 hover:bg-emerald-600 text-white shadow-lg w-full sm:w-auto h-11 md:h-10">
                 <Check className="w-4 h-4 mr-2" /> {isEditing ? 'Save Changes' : 'Create Order'}
               </Button>
             )}
