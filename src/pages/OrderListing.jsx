@@ -15,7 +15,7 @@ const statusStyles = {
 };
 
 export default function OrderListing() {
-  const { orders, setOrders, dispatchNotification } = useAppContext();
+  const { orders, setOrders, products, setProducts, dispatchNotification } = useAppContext();
   const [view, setView] = useState('table'); // 'table' or 'grid'
   const [search, setSearch] = useState('');
   const [statusFilter, setStatusFilter] = useState('All Statuses');
@@ -23,19 +23,76 @@ export default function OrderListing() {
 
   const handleStatusChange = (id, newStatus) => {
     const order = orders.find(o => o.id === id);
-    if (order && order.status !== newStatus && (newStatus === 'Completed' || newStatus === 'Cancelled')) {
-      dispatchNotification(`Order ${id} has been marked as ${newStatus}`, newStatus === 'Completed' ? 'success' : 'danger');
+    if (!order || order.status === newStatus) {
+      setActiveMenuId(null);
+      return;
     }
 
+    let updatedProducts = [...products];
+
+    // Handle inventory changes based on status transition
+    if (newStatus === 'Cancelled') {
+      // Order is being cancelled: Restore stock
+      updatedProducts = products.map(p => {
+        const itemInOrder = order.items?.find(item => item.id === p.id);
+        if (itemInOrder) {
+          const newStock = p.stock + itemInOrder.quantity;
+          return {
+            ...p,
+            stock: newStock,
+            status: newStock === 0 ? 'Out of Stock' : newStock < (p.minQuantity || 10) ? 'Low Stock' : 'In Stock'
+          };
+        }
+        return p;
+      });
+      dispatchNotification(`Order ${id} cancelled. Items returned to stock.`, 'warning');
+    } else if (order.status === 'Cancelled') {
+      // Order is being re-activated from Cancelled: Deduct stock again
+      updatedProducts = products.map(p => {
+        const itemInOrder = order.items?.find(item => item.id === p.id);
+        if (itemInOrder) {
+          const newStock = Math.max(0, p.stock - itemInOrder.quantity);
+          return {
+            ...p,
+            stock: newStock,
+            status: newStock === 0 ? 'Out of Stock' : newStock < (p.minQuantity || 10) ? 'Low Stock' : 'In Stock'
+          };
+        }
+        return p;
+      });
+      dispatchNotification(`Order ${id} re-activated. Items deducted from stock.`, 'info');
+    } else if (newStatus === 'Completed') {
+      dispatchNotification(`Order ${id} marked as completed.`, 'success');
+    }
+
+    setProducts(updatedProducts);
     const updated = orders.map(o => o.id === id ? { ...o, status: newStatus } : o);
     setOrders(updated);
     setActiveMenuId(null);
   };
 
-  const handleDelete = (id) => {
-    const updated = orders.filter(o => o.id !== id);
-    setOrders(updated);
-    dispatchNotification(`Order ${id} deleted successfully.`, 'danger');
+  const handleDelete = (orderId) => {
+    const orderToDelete = orders.find(o => o.id === orderId);
+    if (!orderToDelete) return;
+
+    // Restore stock to products
+    const restoredProducts = products.map(p => {
+      const itemInOrder = orderToDelete.items?.find(item => item.id === p.id);
+      if (itemInOrder) {
+        const newStock = p.stock + itemInOrder.quantity;
+        return {
+          ...p,
+          stock: newStock,
+          status: newStock === 0 ? 'Out of Stock' : newStock < (p.minQuantity || 10) ? 'Low Stock' : 'In Stock'
+        };
+      }
+      return p;
+    });
+
+    setProducts(restoredProducts);
+    const updatedOrders = orders.filter(o => o.id !== orderId);
+    setOrders(updatedOrders);
+    dispatchNotification(`Order ${orderId} deleted and inventory restored.`, 'success');
   };
 
   const filteredOrders = orders.filter(o => {
