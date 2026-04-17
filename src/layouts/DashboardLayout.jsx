@@ -169,20 +169,6 @@ export default function DashboardLayout() {
               </AnimatePresence>
             </button>
 
-            <div className="flex bg-black/5 dark:bg-white/5 p-1 rounded-xl border border-white/5">
-              <button
-                onClick={() => useUIStore.getState().setCurrency('INR')}
-                className={`px-3 py-1.5 rounded-lg text-[10px] font-black uppercase tracking-widest transition-all ${useUIStore(s => s.currency) === 'INR' ? 'bg-primary text-white shadow-lg shadow-primary/20' : 'text-textMuted hover:text-textMain'}`}
-              >
-                ₹ INR
-              </button>
-              <button
-                onClick={() => useUIStore.getState().setCurrency('USD')}
-                className={`px-3 py-1.5 rounded-lg text-[10px] font-black uppercase tracking-widest transition-all ${useUIStore(s => s.currency) === 'USD' ? 'bg-primary text-white shadow-lg shadow-primary/20' : 'text-textMuted hover:text-textMain'}`}
-              >
-                $ USD
-              </button>
-            </div>
 
             <div className="relative">
               <button
