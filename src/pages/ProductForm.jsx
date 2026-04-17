@@ -59,7 +59,7 @@ export default function ProductForm() {
 
     let updated;
 
-    const formattedPrice = `$${Number(formData.price).toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 2})}`;
+    const formattedPrice = `₹${Number(formData.price).toLocaleString('en-IN')}`;
 
     if (isEditing) {
       updated = products.map(p => {
@@ -160,7 +160,7 @@ export default function ProductForm() {
 
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-5 md:gap-6">
             <div className="space-y-2">
-              <label className="text-xs font-bold uppercase tracking-wider text-textMuted">Price ($)</label>
+              <label className="text-xs font-bold uppercase tracking-wider text-textMuted">Price (₹)</label>
               <Input
                 type="number"
                 step="0.01"

@@ -1,18 +1,30 @@
-import { useState } from 'react';
-import { useParams, Link, useNavigate } from 'react-router-dom';
+import { useState, useEffect } from 'react';
+import { useParams, Link } from 'react-router-dom';
 import { ArrowLeft, Printer, Edit, Package, Truck, User, FileText, CheckCircle2 } from 'lucide-react';
 import { Button } from '../components/ui/Button';
 import { Badge } from '../components/ui/Badge';
 import { Card, CardContent } from '../components/ui/Card';
 import { useAppContext } from '../core/AppContext';
 
+const statusStyles = {
+  'Pending': 'warning',
+  'In Progress': 'primary',
+  'Completed': 'success',
+  'Cancelled': 'danger'
+};
+
 export default function OrderDetail() {
   const { orders, setOrders, dispatchNotification } = useAppContext();
   const { id } = useParams();
-  const navigate = useNavigate();
+  const [note, setNote] = useState('');
   
   const order = orders.find(o => o.id === id);
-  const [note, setNote] = useState(order?.notes || '');
+
+  useEffect(() => {
+    if (order) {
+      setNote(order.notes || '');
+    }
+  }, [id, order?.notes]);
 
   const handleSaveNote = () => {
     const updated = orders.map(o => o.id === id ? { ...o, notes: note } : o);
@@ -99,8 +111,8 @@ export default function OrderDetail() {
               <tr key={i} className="border-b border-zinc-200">
                 <td className="py-4 font-medium">{item.name}</td>
                 <td className="py-4 text-center">{item.quantity}</td>
-                <td className="py-4 text-right">${item.price.toFixed(2)}</td>
-                <td className="py-4 text-right font-bold">${(item.price * item.quantity).toFixed(2)}</td>
+                <td className="py-4 text-right">₹{item.price.toLocaleString('en-IN')}</td>
+                <td className="py-4 text-right font-bold">₹{(item.price * item.quantity).toLocaleString('en-IN')}</td>
               </tr>
             ))}
           </tbody>
@@ -110,19 +122,19 @@ export default function OrderDetail() {
           <div className="w-64 space-y-3">
             <div className="flex justify-between text-zinc-600">
               <span className="font-medium">Subtotal</span>
-              <span>${subtotal.toFixed(2)}</span>
+              <span>₹{subtotal.toLocaleString('en-IN')}</span>
             </div>
             <div className="flex justify-between text-zinc-600">
               <span className="font-medium">Shipping Fee</span>
-              <span>${shipping.toFixed(2)}</span>
+              <span>₹{shipping.toLocaleString('en-IN')}</span>
             </div>
             <div className="flex justify-between text-zinc-600">
               <span className="font-medium">Tax (10%)</span>
-              <span>${tax.toFixed(2)}</span>
+              <span>₹{tax.toLocaleString('en-IN')}</span>
             </div>
             <div className="flex justify-between border-t-2 border-black pt-4">
               <span className="text-xl font-black">Grand Total</span>
-              <span className="text-xl font-black">${total.toFixed(2)}</span>
+              <span className="text-xl font-black">₹{total.toLocaleString('en-IN')}</span>
             </div>
           </div>
         </div>
@@ -145,7 +157,7 @@ export default function OrderDetail() {
           <div>
             <div className="flex items-center space-x-3">
               <h2 className="text-2xl font-bold text-textMain">Order {order.id}</h2>
-              <Badge variant="primary">{order.status}</Badge>
+              <Badge variant={statusStyles[order.status] || 'primary'}>{order.status}</Badge>
             </div>
             <p className="text-textMuted text-sm mt-1">Placed on {order.date}</p>
           </div>
@@ -194,18 +206,18 @@ export default function OrderDetail() {
                         </div>
                       </td>
                       <td className="px-6 py-4 text-center text-textMain">{item.quantity}</td>
-                      <td className="px-6 py-4 text-right text-textMain font-medium">${(item.price * item.quantity).toFixed(2)}</td>
+                      <td className="px-6 py-4 text-right text-textMain font-medium">₹{(item.price * item.quantity).toLocaleString('en-IN')}</td>
                     </tr>
                   ))}
                 </tbody>
               </table>
               <div className="p-6 bg-black/5 dark:bg-white/5 flex justify-end">
                 <div className="w-64 space-y-2 text-sm">
-                  <div className="flex justify-between text-textMuted"><span>Subtotal</span><span>${subtotal.toFixed(2)}</span></div>
-                  <div className="flex justify-between text-textMuted"><span>Shipping</span><span>${subtotal > 0 ? shipping.toFixed(2) : "0.00"}</span></div>
-                  <div className="flex justify-between text-textMuted"><span>Tax</span><span>${tax.toFixed(2)}</span></div>
+                  <div className="flex justify-between text-textMuted"><span>Subtotal</span><span>₹{subtotal.toLocaleString('en-IN')}</span></div>
+                  <div className="flex justify-between text-textMuted"><span>Shipping</span><span>₹{subtotal > 0 ? shipping.toLocaleString('en-IN') : "0"}</span></div>
+                  <div className="flex justify-between text-textMuted"><span>Tax</span><span>₹{tax.toLocaleString('en-IN')}</span></div>
                   <div className="flex justify-between text-textMain font-bold pt-2 border-t border-border text-base">
-                    <span>Total</span><span>${total.toFixed(2)}</span>
+                    <span>Total</span><span>₹{total.toLocaleString('en-IN')}</span>
                   </div>
                 </div>
               </div>

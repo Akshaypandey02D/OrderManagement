@@ -162,7 +162,7 @@ export default function OrderForm() {
             customer: formData.customerName,
             email: formData.email,
             phone: formData.phone,
-            amount: `$${totalAmount.toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 2})}`,
+            amount: `₹${totalAmount.toLocaleString('en-IN')}`,
             items: formData.orderItems
           };
         }
@@ -176,7 +176,7 @@ export default function OrderForm() {
         email: formData.email,
         phone: formData.phone,
         date: date,
-        amount: `$${totalAmount.toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 2})}`,
+        amount: `₹${totalAmount.toLocaleString('en-IN')}`,
         status: 'Pending',
         priority: 'Normal',
         items: formData.orderItems
@@ -345,12 +345,12 @@ export default function OrderForm() {
                                 <div className="space-y-1">
                                   <h4 className="font-bold text-textMain pr-8">{item.name}</h4>
                                   <div className="flex justify-between text-sm">
-                                    <span className="text-textMuted">Price: ${item.price.toFixed(2)}</span>
+                                    <span className="text-textMuted">Price: ₹{item.price.toLocaleString('en-IN')}</span>
                                     <span className="text-textMuted">Qty: {item.quantity}</span>
                                   </div>
                                   <div className="pt-2 flex justify-between items-center border-t border-border mt-2">
                                     <span className="text-xs font-bold text-primary uppercase">Total</span>
-                                    <span className="font-bold text-textMain text-lg">${(item.price * item.quantity).toFixed(2)}</span>
+                                    <span className="font-bold text-textMain text-lg">₹{(item.price * item.quantity).toLocaleString('en-IN')}</span>
                                   </div>
                                 </div>
                               </div>
@@ -373,9 +373,9 @@ export default function OrderForm() {
                                 {formData.orderItems.map((item, idx) => (
                                   <tr key={idx} className="border-b border-border last:border-0 hover:bg-black/5 dark:hover:bg-white/5 transition-colors">
                                     <td className="px-4 py-3 text-textMain font-medium">{item.name}</td>
-                                    <td className="px-4 py-3 text-textMuted">${item.price.toFixed(2)}</td>
+                                    <td className="px-4 py-3 text-textMuted">₹{item.price.toLocaleString('en-IN')}</td>
                                     <td className="px-4 py-3 text-textMuted text-center">{item.quantity}</td>
-                                    <td className="px-4 py-3 text-textMain font-bold">${(item.price * item.quantity).toFixed(2)}</td>
+                                    <td className="px-4 py-3 text-textMain font-bold">₹{(item.price * item.quantity).toLocaleString('en-IN')}</td>
                                     <td className="px-4 py-3 text-right">
                                       <button onClick={() => handleRemoveItem(idx)} className="p-1.5 text-textMuted hover:text-rose-500 transition-colors rounded-md hover:bg-rose-500/10">
                                         <Trash2 className="w-4 h-4" />
@@ -406,7 +406,7 @@ export default function OrderForm() {
                                 >
                                   <option value="" disabled>Choose a product from inventory...</option>
                                   {products.map(p => {
-                                    const priceStr = typeof p.price === 'string' ? p.price : `$${p.price.toFixed(2)}`;
+                                    const priceStr = typeof p.price === 'string' ? p.price : `₹${p.price.toLocaleString('en-IN')}`;
                                     return (
                                       <option key={p.id} value={p.id}>{p.name} ({priceStr})</option>
                                     )

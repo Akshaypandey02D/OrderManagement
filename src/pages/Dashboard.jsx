@@ -8,8 +8,9 @@ import {
 } from 'lucide-react';
 import { Badge } from '../components/ui/Badge';
 import { Link } from 'react-router-dom';
-import { Button } from '../components/ui/Button';
+import { StatCard } from '../components/Dashboard/StatCard';
 import { useAppContext } from '../core/AppContext';
+import { Button } from '../components/ui/Button';
 
 export default function Dashboard() {
   const { orders, products } = useAppContext();
@@ -26,9 +27,9 @@ export default function Dashboard() {
     return sum + (isNaN(val) ? 0 : val);
   }, 0);
 
-  const formattedRevenue = new Intl.NumberFormat('en-US', {
+  const formattedRevenue = new Intl.NumberFormat('en-IN', {
     style: 'currency',
-    currency: 'USD',
+    currency: 'INR',
     maximumFractionDigits: 0
   }).format(totalRevenue);
 
@@ -131,19 +132,13 @@ export default function Dashboard() {
       </div>
 
       {/* Main Content Grid */}
-      <div className="grid grid-cols-1 xl:grid-cols-3 gap-8">
+      <div className="grid grid-cols-1 lg:grid-cols-2 xl:grid-cols-3 gap-8">
         {/* Sales Performance Chart */}
         <Card className="xl:col-span-2 glass border-border shadow-2xl relative overflow-hidden group">
           <CardHeader className="flex flex-row items-center justify-between relative z-10">
             <div>
               <CardTitle className="text-xl font-black text-textMain">Revenue Pulse</CardTitle>
               <p className="text-sm text-textMuted font-medium italic">Advanced fulfillment & yield diagnostics</p>
-            </div>
-            <div className="flex gap-2">
-              <div className="flex items-center gap-2 px-3 py-1 bg-primary/5 rounded-full border border-primary/10">
-                <div className="w-1.5 h-1.5 rounded-full bg-primary animate-ping" />
-                <span className="text-[10px] font-black uppercase text-primary">Live stream</span>
-              </div>
             </div>
           </CardHeader>
           <CardContent className="relative z-10">
@@ -176,7 +171,7 @@ export default function Dashboard() {
                     fontWeight="bold"
                     axisLine={false}
                     tickLine={false}
-                    tickFormatter={(v) => `$${v}`}
+                    tickFormatter={(v) => `₹${v}`}
                   />
                   <Tooltip
                     cursor={{ fill: 'var(--primary)', opacity: 0.05 }}
@@ -208,8 +203,7 @@ export default function Dashboard() {
               </ResponsiveContainer>
             </div>
           </CardContent>
-          {/* Subtle background flair */}
-          <div className="absolute -bottom-24 -right-24 w-64 h-64 bg-primary/10 rounded-full blur-[100px] z-0 group-hover:bg-primary/20 transition-all duration-700" />
+          <div className="absolute -bottom-24 -right-24 w-64 h-64 bg-primary/10 rounded-full blur-[100px] z-0" />
         </Card>
 
         {/* Recent Activity / Top Customers */}
@@ -230,19 +224,19 @@ export default function Dashboard() {
                   .sort((a, b) => parseFloat(b.amount.replace(/[^0-9.-]+/g, "")) - parseFloat(a.amount.replace(/[^0-9.-]+/g, "")))
                   .slice(0, 6)
                   .map((order) => (
-                    <div key={order.id} className="flex items-center justify-between group cursor-pointer p-2 hover:bg-black/5 dark:hover:bg-white/5 rounded-xl transition-all">
+                    <div key={order.id} className="flex items-center justify-between p-2 hover:bg-black/5 dark:hover:bg-white/5 rounded-xl transition-all">
                       <div className="flex items-center gap-4">
                         <div className="w-10 h-10 rounded-full bg-primary/10 flex items-center justify-center text-primary font-bold text-xs">
                           {order.customer.charAt(0)}
                         </div>
                         <div>
                           <p className="text-sm font-bold text-textMain leading-none">{order.customer}</p>
-                          <p className="text-xs text-textMuted mt-1">{order.id} • {order.date}</p>
+                          <p className="text-xs text-textMuted mt-1">{order.id}</p>
                         </div>
                       </div>
                       <div className="text-right">
                         <p className="text-sm font-black text-textMain">{order.amount}</p>
-                        <Badge className="text-[10px] h-4 px-1.5" variant={order.status === 'Completed' ? 'success' : 'warning'}>
+                        <Badge variant={order.status === 'Completed' ? 'success' : 'warning'}>
                           {order.status}
                         </Badge>
                       </div>
@@ -250,18 +244,50 @@ export default function Dashboard() {
                   ))
               )}
             </div>
-            <Link to="/orders">
-              <Button variant="ghost" className="w-full mt-6 text-primary hover:bg-primary/5">
-                View All Transactions <ChevronRight className="w-4 h-4 ml-1" />
-              </Button>
-            </Link>
+          </CardContent>
+        </Card>
+
+        {/* Top Selling Products */}
+        <Card className="glass border-border shadow-md flex flex-col xl:col-span-1">
+          <CardHeader>
+            <CardTitle className="text-xl font-bold text-textMain">Top Moving Assets</CardTitle>
+            <p className="text-sm text-textMuted font-medium">Top products by unit volume</p>
+          </CardHeader>
+          <CardContent className="space-y-4">
+            {(() => {
+              const productSales = {};
+              orders.forEach(o => {
+                o.items?.forEach(item => {
+                  productSales[item.name] = (productSales[item.name] || 0) + item.quantity;
+                });
+              });
+              const maxVal = Math.max(...Object.values(productSales), 1);
+              return Object.entries(productSales)
+                .sort(([, a], [, b]) => b - a)
+                .slice(0, 5)
+                .map(([name, volume]) => (
+                  <div key={name} className="flex items-center justify-between p-3 bg-black/5 dark:bg-white/5 rounded-2xl border border-border/10">
+                    <div className="flex items-center gap-3">
+                      <div className="p-2 bg-primary/10 rounded-xl">
+                        <Package className="w-4 h-4 text-primary" />
+                      </div>
+                      <div>
+                        <p className="text-sm font-bold text-textMain">{name}</p>
+                        <p className="text-[10px] text-textMuted uppercase font-black">{volume} units moved</p>
+                      </div>
+                    </div>
+                    <div className="w-1.5 h-8 bg-primary/20 rounded-full overflow-hidden">
+                       <div className="bg-primary transition-all duration-1000" style={{ height: `${(volume / maxVal) * 100}%`, width: '100%' }} />
+                    </div>
+                  </div>
+                ));
+            })()}
           </CardContent>
         </Card>
       </div>
 
-      {/* Critical Stock Alert Bar (Lower half) */}
       {lowStockCount > 0 && (
-        <Card className="border-l-4 border-l-rose-500 bg-rose-500/5 dark:bg-rose-500/10 border-border overflow-hidden">
+        <Card className="border-l-4 border-l-rose-500 bg-rose-500/5 border-border overflow-hidden">
           <CardContent className="py-4 flex flex-col sm:flex-row items-center justify-between gap-4">
             <div className="flex items-center gap-3">
               <div className="p-2 bg-rose-500 text-white rounded-lg">
@@ -269,10 +295,10 @@ export default function Dashboard() {
               </div>
               <div>
                 <h4 className="font-bold text-textMain">Inventory Risk Detected</h4>
-                <p className="text-sm text-textMuted">{lowStockCount} products are trending towards stockouts. Immediate restock recommended.</p>
+                <p className="text-sm text-textMuted">{lowStockCount} products are trending towards stockouts.</p>
               </div>
             </div>
-            <Link to="/inventory/low-stock">
+            <Link to="/inventory">
               <Button size="sm" className="bg-rose-500 hover:bg-rose-600 text-white border-none shadow-sm">
                 Manage Inventory
               </Button>
@@ -281,34 +307,5 @@ export default function Dashboard() {
         </Card>
       )}
     </div>
-  );
-}
-
-function StatCard({ title, value, trend, trendUp, icon: Icon, color }) {
-  const colorMap = {
-    indigo: 'text-indigo-500 bg-indigo-500/10',
-    blue: 'text-blue-500 bg-blue-500/10',
-    emerald: 'text-emerald-500 bg-emerald-500/10',
-    rose: 'text-rose-500 bg-rose-500/10',
-    amber: 'text-amber-500 bg-amber-500/10',
-  };
-
-  return (
-    <Card className="glass border-border shadow-sm group hover:scale-[1.02] transition-transform duration-300">
-      <CardContent className="p-6">
-        <div className="flex justify-between items-start mb-4">
-          <div className={`p-2 rounded-xl ${colorMap[color] || colorMap.indigo}`}>
-            <Icon className="w-5 h-5" />
-          </div>
-          <div className={`flex items-center gap-1 text-xs font-bold ${trendUp ? 'text-emerald-500' : 'text-rose-500'}`}>
-            {trend}
-          </div>
-        </div>
-        <div>
-          <h4 className="text-textMuted text-xs font-bold uppercase tracking-wider">{title}</h4>
-          <p className="text-2xl font-black text-textMain mt-1">{value}</p>
-        </div>
-      </CardContent>
-    </Card>
   );
 }

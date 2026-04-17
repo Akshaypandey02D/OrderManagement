@@ -1,11 +1,14 @@
 import { useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Link } from 'react-router-dom';
-import { Search, Filter, MoreHorizontal, Edit, Trash2, LayoutGrid, List, Package } from 'lucide-react';
+import { Search, Filter, MoreHorizontal, Edit, Trash2, LayoutGrid, List, Package, Upload } from 'lucide-react';
 import { useAppContext } from '../core/AppContext';
 import { Button } from '../components/ui/Button';
 import { Badge } from '../components/ui/Badge';
 import { Card } from '../components/ui/Card';
+import { AlertModal } from '../components/ui/Modal';
+import { EmptyState } from '../components/ui/EmptyState';
+import { BulkImportModal } from '../components/Inventory/BulkImportModal';
 
 const statusStyles = {
   'In Stock': 'success',
@@ -18,11 +21,35 @@ export default function ProductListing() {
   const [view, setView] = useState('table');
   const [search, setSearch] = useState('');
   const [statusFilter, setStatusFilter] = useState('All Statuses');
+  const [deleteId, setDeleteId] = useState(null);
+  const [isBulkImportOpen, setIsBulkImportOpen] = useState(false);
 
-  const handleDelete = (id) => {
-    const updated = products.filter(p => p.id !== id);
+  const handleBulkImport = (newProducts) => {
+    const currentProducts = [...products];
+    let addedCount = 0;
+    let updatedCount = 0;
+
+    newProducts.forEach(newP => {
+      const index = currentProducts.findIndex(p => p.sku === newP.sku);
+      if (index > -1) {
+        currentProducts[index] = { ...currentProducts[index], ...newP };
+        updatedCount++;
+      } else {
+        currentProducts.push(newP);
+        addedCount++;
+      }
+    });
+
+    setProducts(currentProducts);
+    dispatchNotification(`Bulk Import Successful: ${addedCount} added, ${updatedCount} updated.`, 'success');
+  };
+
+  const confirmDelete = () => {
+    if (!deleteId) return;
+    const updated = products.filter(p => p.id !== deleteId);
     setProducts(updated);
-    dispatchNotification(`Product ${id} has been deleted.`, 'danger');
+    dispatchNotification(`Product ${deleteId} has been deleted.`, 'danger');
+    setDeleteId(null);
   };
 
   const filteredProducts = products.filter(p => {
@@ -40,13 +67,21 @@ export default function ProductListing() {
           <p className="text-sm text-textMuted mt-0.5">Manage your product catalog and inventory.</p>
         </div>
         <div className="flex items-center gap-2 md:gap-3">
-          <Button 
-            variant="secondary" 
+          <Button
+            variant="secondary"
             onClick={() => setView(view === 'table' ? 'grid' : 'table')}
             className="flex-1 sm:flex-none h-10 px-3 md:px-4"
           >
             {view === 'table' ? <LayoutGrid className="w-4 h-4 md:mr-2" /> : <List className="w-4 h-4 md:mr-2" />}
             <span className="hidden md:inline">{view === 'table' ? 'Grid View' : 'List View'}</span>
+          </Button>
+          <Button
+            variant="secondary"
+            onClick={() => setIsBulkImportOpen(true)}
+            className="flex-1 sm:flex-none h-10 px-3 md:px-4 border-primary/20 hover:bg-primary/10 text-primary"
+          >
+            <Upload className="w-4 h-4 md:mr-2" />
+            <span className="hidden md:inline">Bulk Import</span>
           </Button>
           <Link to="/products/new" className="flex-1 sm:flex-none">
             <Button className="w-full h-10 px-3 md:px-4">
@@ -83,9 +118,6 @@ export default function ProductListing() {
             </select>
             <Filter className="absolute right-3 top-1/2 -translate-y-1/2 w-4 h-4 text-textMuted pointer-events-none" />
           </div>
-          <Button variant="secondary" className="h-11 md:h-10 px-3 border-border rounded-xl">
-            <Filter className="w-4 h-4" />
-          </Button>
         </div>
       </div>
 
@@ -144,7 +176,7 @@ export default function ProductListing() {
                             </button>
                           </Link>
                           <button
-                            onClick={() => handleDelete(product.id)}
+                            onClick={() => setDeleteId(product.id)}
                             className="p-2 text-textMuted hover:text-rose-500 rounded-lg hover:bg-rose-500/10 transition-colors"
                           >
                             <Trash2 className="w-4 h-4" />
@@ -176,7 +208,7 @@ export default function ProductListing() {
                     </div>
                     <Badge variant={statusStyles[product.status]}>{product.status}</Badge>
                   </div>
-                  
+
                   <div className="grid grid-cols-2 gap-4 mb-4">
                     <div className="bg-black/5 dark:bg-white/5 p-2.5 rounded-lg border border-border/50">
                       <p className="text-[10px] uppercase font-bold text-textMuted mb-1">Price</p>
@@ -194,10 +226,10 @@ export default function ProductListing() {
                         <Edit className="w-3.5 h-3.5 mr-2" /> Edit
                       </Button>
                     </Link>
-                    <Button 
-                      variant="danger" 
+                    <Button
+                      variant="danger"
                       className="h-9 px-3"
-                      onClick={() => handleDelete(product.id)}
+                      onClick={() => setDeleteId(product.id)}
                     >
                       <Trash2 className="w-3.5 h-3.5" />
                     </Button>
@@ -210,7 +242,14 @@ export default function ProductListing() {
       ) : (
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 md:gap-6">
           {filteredProducts.length === 0 && (
-            <div className="col-span-full py-12 text-center text-textMuted font-medium">No products found.</div>
+            <div className="col-span-full">
+              <EmptyState
+                title="Inventory Empty"
+                description="Your product catalog is currently empty or no items match your search filters."
+                actionLabel="Add First Product"
+                actionLink="/products/new"
+              />
+            </div>
           )}
           <AnimatePresence>
             {filteredProducts.map((product) => (
@@ -235,11 +274,11 @@ export default function ProductListing() {
                       </div>
                       <Badge variant={statusStyles[product.status]}>{product.status}</Badge>
                     </div>
-                    
+
                     <div className="space-y-2.5 text-sm text-textMain mt-6 font-medium">
                       <div className="flex justify-between items-center p-2 rounded-lg bg-black/5 dark:bg-white/5">
                         <span className="text-textMuted text-xs font-bold uppercase">Price</span>
-                        <span className="text-lg font-bold">${parseFloat(product.price.replace(/[^0-9.]/g, '')).toFixed(2)}</span>
+                        <span className="text-lg font-bold">₹{parseFloat(product.price.replace(/[^0-9.]/g, '')).toLocaleString('en-IN')}</span>
                       </div>
                       <div className="flex justify-between items-center p-2 rounded-lg bg-black/5 dark:bg-white/5">
                         <span className="text-textMuted text-xs font-bold uppercase">Stock Level</span>
@@ -256,7 +295,7 @@ export default function ProductListing() {
                           </button>
                         </Link>
                         <button
-                          onClick={(e) => { e.preventDefault(); handleDelete(product.id); }}
+                          onClick={(e) => { e.preventDefault(); setDeleteId(product.id); }}
                           className="p-2 text-textMuted hover:text-rose-500 transition-colors rounded-lg hover:bg-rose-500/10"
                         >
                           <Trash2 className="w-4 h-4" />
@@ -270,6 +309,22 @@ export default function ProductListing() {
           </AnimatePresence>
         </div>
       )}
+      {/* Delete Confirmation */}
+      <AlertModal
+        isOpen={!!deleteId}
+        onClose={() => setDeleteId(null)}
+        onConfirm={confirmDelete}
+        title="Delete Product"
+        message={`Are you sure you want to delete product ${deleteId}? This will permanently remove it from your catalog.`}
+        confirmText="Remove Product"
+        variant="danger"
+      />
+      {/* Bulk Import Modal */}
+      <BulkImportModal
+        isOpen={isBulkImportOpen}
+        onClose={() => setIsBulkImportOpen(false)}
+        onImport={handleBulkImport}
+      />
     </div>
   );
 }
