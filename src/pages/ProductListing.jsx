@@ -2,7 +2,8 @@ import { useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Link } from 'react-router-dom';
 import { Search, Filter, MoreHorizontal, Edit, Trash2, LayoutGrid, List, Package, Upload } from 'lucide-react';
-import { useAppContext } from '../core/AppContext';
+import { useProductStore } from '../stores/useProductStore';
+import { useNotificationStore } from '../stores/useNotificationStore';
 import { Button } from '../components/ui/Button';
 import { Badge } from '../components/ui/Badge';
 import { Card } from '../components/ui/Card';
@@ -17,7 +18,9 @@ const statusStyles = {
 };
 
 export default function ProductListing() {
-  const { products, setProducts, dispatchNotification } = useAppContext();
+  const { products, deleteProduct, setProducts } = useProductStore();
+  const { dispatchNotification } = useNotificationStore();
+  
   const [view, setView] = useState('table');
   const [search, setSearch] = useState('');
   const [statusFilter, setStatusFilter] = useState('All Statuses');
@@ -46,15 +49,14 @@ export default function ProductListing() {
 
   const confirmDelete = () => {
     if (!deleteId) return;
-    const updated = products.filter(p => p.id !== deleteId);
-    setProducts(updated);
+    deleteProduct(deleteId);
     dispatchNotification(`Product ${deleteId} has been deleted.`, 'danger');
     setDeleteId(null);
   };
 
   const filteredProducts = products.filter(p => {
     const matchesSearch = p.name.toLowerCase().includes(search.toLowerCase()) ||
-      p.sku.toLowerCase().includes(search.toLowerCase());
+      (p.sku && p.sku.toLowerCase().includes(search.toLowerCase()));
     const matchesStatus = statusFilter === 'All Statuses' || p.status === statusFilter;
     return matchesSearch && matchesStatus;
   });
@@ -92,7 +94,6 @@ export default function ProductListing() {
         </div>
       </div>
 
-      {/* Filters Toolbar */}
       <div className="flex flex-col lg:flex-row gap-3 md:gap-4">
         <div className="relative flex-1">
           <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-textMuted" />
@@ -121,11 +122,9 @@ export default function ProductListing() {
         </div>
       </div>
 
-      {/* Data Display */}
       {view === 'table' ? (
         <Card className="glass overflow-hidden shadow-lg border-white/5">
           <div className="overflow-x-auto">
-            {/* Desktop Table View */}
             <table className="w-full text-sm text-left hidden md:table">
               <thead className="text-[11px] text-textMuted uppercase tracking-widest bg-black/5 dark:bg-white/5 border-b border-border">
                 <tr>
@@ -163,7 +162,7 @@ export default function ProductListing() {
                         </div>
                       </td>
                       <td className="px-6 py-4 text-textMuted font-medium">{product.sku}</td>
-                      <td className="px-6 py-4 text-textMain font-bold">{product.price}</td>
+                      <td className="px-6 py-4 text-textMain font-bold">{typeof product.price === 'number' ? `₹${product.price.toLocaleString('en-IN')}` : product.price}</td>
                       <td className="px-6 py-4 text-textMain">{product.stock}</td>
                       <td className="px-6 py-4">
                         <Badge variant={statusStyles[product.status]}>{product.status}</Badge>
@@ -189,11 +188,7 @@ export default function ProductListing() {
               </tbody>
             </table>
 
-            {/* Mobile Card View (replaced Table purely for mobile) */}
             <div className="block md:hidden divide-y divide-border">
-              {filteredProducts.length === 0 && (
-                <div className="p-12 text-center text-textMuted font-medium">No products found.</div>
-              )}
               {filteredProducts.map((product) => (
                 <div key={product.id} className="p-4 hover:bg-black/5 dark:hover:bg-white/5 transition-colors">
                   <div className="flex justify-between items-start mb-3">
@@ -212,7 +207,7 @@ export default function ProductListing() {
                   <div className="grid grid-cols-2 gap-4 mb-4">
                     <div className="bg-black/5 dark:bg-white/5 p-2.5 rounded-lg border border-border/50">
                       <p className="text-[10px] uppercase font-bold text-textMuted mb-1">Price</p>
-                      <p className="text-sm font-bold text-textMain">{product.price}</p>
+                      <p className="text-sm font-bold text-textMain">{typeof product.price === 'number' ? `₹${product.price.toLocaleString('en-IN')}` : product.price}</p>
                     </div>
                     <div className="bg-black/5 dark:bg-white/5 p-2.5 rounded-lg border border-border/50">
                       <p className="text-[10px] uppercase font-bold text-textMuted mb-1">In Stock</p>
@@ -241,16 +236,6 @@ export default function ProductListing() {
         </Card>
       ) : (
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 md:gap-6">
-          {filteredProducts.length === 0 && (
-            <div className="col-span-full">
-              <EmptyState
-                title="Inventory Empty"
-                description="Your product catalog is currently empty or no items match your search filters."
-                actionLabel="Add First Product"
-                actionLink="/products/new"
-              />
-            </div>
-          )}
           <AnimatePresence>
             {filteredProducts.map((product) => (
               <motion.div
@@ -278,7 +263,7 @@ export default function ProductListing() {
                     <div className="space-y-2.5 text-sm text-textMain mt-6 font-medium">
                       <div className="flex justify-between items-center p-2 rounded-lg bg-black/5 dark:bg-white/5">
                         <span className="text-textMuted text-xs font-bold uppercase">Price</span>
-                        <span className="text-lg font-bold">₹{parseFloat(product.price.replace(/[^0-9.]/g, '')).toLocaleString('en-IN')}</span>
+                        <span className="text-lg font-bold">{typeof product.price === 'number' ? `₹${product.price.toLocaleString('en-IN')}` : product.price}</span>
                       </div>
                       <div className="flex justify-between items-center p-2 rounded-lg bg-black/5 dark:bg-white/5">
                         <span className="text-textMuted text-xs font-bold uppercase">Stock Level</span>
@@ -309,7 +294,7 @@ export default function ProductListing() {
           </AnimatePresence>
         </div>
       )}
-      {/* Delete Confirmation */}
+      
       <AlertModal
         isOpen={!!deleteId}
         onClose={() => setDeleteId(null)}
@@ -319,7 +304,7 @@ export default function ProductListing() {
         confirmText="Remove Product"
         variant="danger"
       />
-      {/* Bulk Import Modal */}
+      
       <BulkImportModal
         isOpen={isBulkImportOpen}
         onClose={() => setIsBulkImportOpen(false)}

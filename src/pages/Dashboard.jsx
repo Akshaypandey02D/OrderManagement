@@ -1,43 +1,32 @@
-import { useState } from 'react';
 import {
   ComposedChart, Bar, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer
 } from 'recharts';
 import { Card, CardHeader, CardTitle, CardContent } from '../components/ui/Card';
 import {
-  ArrowDownRight, Package, CheckCircle2, ChevronRight, Calendar, Download, CreditCard, Clock
+  ArrowDownRight, Package, CheckCircle2, CreditCard, Clock, Star, TrendingUp,
+  LayoutDashboard
 } from 'lucide-react';
 import { Badge } from '../components/ui/Badge';
 import { Link } from 'react-router-dom';
 import { StatCard } from '../components/Dashboard/StatCard';
-import { useAppContext } from '../core/AppContext';
+import { useOrderStore } from '../stores/useOrderStore';
+import { useProductStore } from '../stores/useProductStore';
 import { Button } from '../components/ui/Button';
+import { formatCurrency, formatDate } from '../utils/format';
 
 export default function Dashboard() {
-  const { orders, products } = useAppContext();
+  const { orders } = useOrderStore();
+  const { products } = useProductStore();
 
-  // Logic: Extract actual date range from orders
-  const sortedDates = [...orders].map(o => o.date).sort();
-  const dateRangeStr = sortedDates.length > 0
-    ? `${new Date(sortedDates[0]).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })} - ${new Date(sortedDates[sortedDates.length - 1]).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}`
-    : 'No data available';
-
-  // KPI Calculations
-  const totalRevenue = orders.reduce((sum, o) => {
-    const val = parseFloat(o.amount.replace(/[^0-9.-]+/g, ""));
-    return sum + (isNaN(val) ? 0 : val);
-  }, 0);
-
-  const formattedRevenue = new Intl.NumberFormat('en-IN', {
-    style: 'currency',
-    currency: 'INR',
-    maximumFractionDigits: 0
-  }).format(totalRevenue);
+  // KPIs
+  const totalRevenue = orders.reduce((sum, o) => sum + (o.amount || 0), 0);
 
   const pendingOrders = orders.filter(o => o.status === 'Pending').length;
   const inProgressOrders = orders.filter(o => o.status === 'In Progress').length;
   const completedOrders = orders.filter(o => o.status === 'Completed').length;
   const cancelledOrders = orders.filter(o => o.status === 'Cancelled').length;
-  const lowStockCount = products.filter(p => p.stock < (p.minQuantity || 10)).length;
+  const backorderOrders = orders.filter(o => o.status === 'Backordered').length;
+  const lowStockCount = products.filter(p => Number(p.stock) < (p.minQuantity || 10)).length;
 
   // Chart Data Preparation
   const ordersByDate = orders.reduce((acc, o) => {
@@ -46,33 +35,50 @@ export default function Dashboard() {
   }, {});
 
   const revenueByDate = orders.reduce((acc, o) => {
-    const val = parseFloat(o.amount.replace(/[^0-9.-]+/g, ""));
-    acc[o.date] = (acc[o.date] || 0) + val;
+    acc[o.date] = (acc[o.date] || 0) + (o.amount || 0);
     return acc;
   }, {});
 
   const performanceData = Object.keys(ordersByDate).sort().map(date => ({
-    name: new Date(date).toLocaleDateString('en-US', { month: 'short', day: 'numeric' }),
+    name: formatDate(date),
     orders: ordersByDate[date],
     revenue: revenueByDate[date]
   }));
 
+  const statusStyles = {
+    'Pending': 'warning',
+    'In Progress': 'primary',
+    'Completed': 'success',
+    'Cancelled': 'danger',
+    'Backordered': 'danger'
+  };
+
   return (
-    <div className="space-y-10 pb-16">
-      {/* Top Action Bar */}
-      <div className="flex items-center justify-between">
-        <div className="flex items-center gap-3">
-          <div className="w-2 h-8 bg-primary rounded-full" />
-          <h2 className="text-2xl font-black text-textMain tracking-tight">Analytics Command Center</h2>
+    <div className="space-y-8 pb-16">
+      <div className="flex flex-col md:flex-row items-start md:items-center justify-between gap-4">
+        <div className="flex items-center gap-4">
+          <div className="w-10 h-10 rounded-xl bg-primary/10 flex items-center justify-center text-primary shrink-0">
+            <LayoutDashboard className="w-6 h-6" />
+          </div>
+          <div>
+            <h2 className="text-2xl font-bold tracking-tight text-textMain">System Overview</h2>
+            <p className="text-sm text-textMuted mt-1">Real-time performance and inventory metrics.</p>
+          </div>
+        </div>
+        
+        <div className="flex items-center gap-3 p-1 bg-card border border-border rounded-xl">
+           <div className="px-3 py-1.5 bg-emerald-500/10 text-emerald-500 rounded-lg text-xs font-bold flex items-center gap-2">
+              <div className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse" />
+              Live System
+           </div>
         </div>
       </div>
 
-      {/* Primary KPI Grid - Total & Revenue */}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-4">
         <StatCard
-          title="Gross Revenue"
-          value={formattedRevenue}
-          trend="+12%"
+          title="Total Revenue"
+          value={formatCurrency(totalRevenue)}
+          trend="+12.5%"
           trendUp={true}
           icon={CreditCard}
           color="indigo"
@@ -86,63 +92,47 @@ export default function Dashboard() {
           color="blue"
         />
         <StatCard
-          title="In Progress"
-          value={inProgressOrders}
-          trend="Active"
+          title="Active Orders"
+          value={inProgressOrders + pendingOrders}
+          trend="Processing"
           trendUp={true}
           icon={Clock}
           color="amber"
-          className="lg:col-span-1"
+        />
+        <StatCard
+          title="Backordered"
+          value={backorderOrders}
+          trend="Inventory Issue"
+          trendUp={false}
+          icon={Star}
+          color="rose"
         />
         <StatCard
           title="Completed"
           value={completedOrders}
-          trend="Success"
+          trend="Fulfillment Rate"
           trendUp={true}
           icon={CheckCircle2}
           color="emerald"
         />
-        <StatCard
-          title="Cancelled"
-          value={cancelledOrders}
-          trend="Lost"
-          trendUp={false}
-          icon={ArrowDownRight}
-          color="rose"
-        />
       </div>
 
-      <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
-        <StatCard
-          title="Pending Approval"
-          value={pendingOrders}
-          trend="Awaiting"
-          trendUp={false}
-          icon={Package}
-          color="blue"
-        />
-        <StatCard
-          title="Inventory Risk"
-          value={lowStockCount}
-          trend={`${lowStockCount > 0 ? 'Urgent' : 'Healthy'}`}
-          trendUp={lowStockCount === 0}
-          icon={ArrowDownRight}
-          color={lowStockCount > 0 ? "rose" : "emerald"}
-        />
-      </div>
-
-      {/* Main Content Grid */}
-      <div className="grid grid-cols-1 lg:grid-cols-2 xl:grid-cols-3 gap-8">
-        {/* Sales Performance Chart */}
-        <Card className="xl:col-span-2 glass border-border shadow-2xl relative overflow-hidden group">
-          <CardHeader className="flex flex-row items-center justify-between relative z-10">
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
+        <Card className="lg:col-span-2 glass border-border shadow-xl relative overflow-hidden">
+          <CardHeader className="flex flex-row items-center justify-between p-6 pb-0">
             <div>
-              <CardTitle className="text-xl font-black text-textMain">Revenue Pulse</CardTitle>
-              <p className="text-sm text-textMuted font-medium italic">Advanced fulfillment & yield diagnostics</p>
+              <CardTitle className="text-xl font-bold text-textMain">Revenue Analysis</CardTitle>
+              <p className="text-sm text-textMuted mt-1">Financial performance over the last 30 days.</p>
             </div>
+            {performanceData.length > 0 && (
+               <div className="text-right">
+                  <p className="text-xs font-bold text-textMuted mb-1">Total Yield</p>
+                  <p className="text-lg font-bold text-emerald-500 tabular-nums">+{formatCurrency(performanceData[performanceData.length-1].revenue)}</p>
+               </div>
+            )}
           </CardHeader>
-          <CardContent className="relative z-10">
-            <div className="h-[400px] w-full mt-6">
+          <CardContent className="p-6">
+            <div className="h-[350px] w-full bg-black/5 dark:bg-white/5 rounded-2xl p-4 border border-border/50">
               <ResponsiveContainer width="100%" height="100%">
                 <ComposedChart data={performanceData}>
                   <defs>
@@ -155,41 +145,46 @@ export default function Dashboard() {
                       <stop offset="100%" stopColor="#ec4899" />
                     </linearGradient>
                   </defs>
-                  <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="var(--border)" opacity={0.2} />
+                  <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="var(--border)" opacity={0.1} />
                   <XAxis
                     dataKey="name"
                     stroke="var(--text-muted)"
-                    fontSize={10}
-                    fontWeight="bold"
+                    fontSize={11}
+                    fontWeight="500"
                     axisLine={false}
                     tickLine={false}
-                    dy={15}
+                    dy={10}
                   />
                   <YAxis
                     stroke="var(--text-muted)"
-                    fontSize={10}
-                    fontWeight="bold"
+                    fontSize={11}
+                    fontWeight="500"
                     axisLine={false}
                     tickLine={false}
-                    tickFormatter={(v) => `₹${v}`}
+                    tickFormatter={(v) => `₹${v / 1000}k`}
                   />
                   <Tooltip
-                    cursor={{ fill: 'var(--primary)', opacity: 0.05 }}
-                    contentStyle={{
-                      backgroundColor: 'rgba(0,0,0,0.8)',
-                      backdropFilter: 'blur(10px)',
-                      border: 'none',
-                      borderRadius: '12px',
-                      boxShadow: '0 20px 50px rgba(0,0,0,0.3)'
+                    cursor={{ fill: 'var(--primary)', opacity: 0.1 }}
+                    content={({ active, payload }) => {
+                       if (active && payload && payload.length) {
+                          return (
+                             <div className="bg-card text-textMain px-4 py-3 rounded-xl shadow-2xl border border-border backdrop-blur-3xl">
+                                <p className="text-xs font-bold text-textMuted mb-2">{payload[0].payload.name}</p>
+                                <div className="space-y-1">
+                                   <p className="text-lg font-bold text-primary">{formatCurrency(payload[0].value)}</p>
+                                   <p className="text-xs font-medium text-textMuted">{payload[0].payload.orders} Transactions</p>
+                                </div>
+                             </div>
+                          );
+                       }
+                       return null;
                     }}
-                    labelStyle={{ color: '#fff', fontWeight: '900', marginBottom: '4px' }}
-                    itemStyle={{ color: 'var(--primary)', fontSize: '12px', fontWeight: 'bold' }}
                   />
                   <Bar
                     dataKey="revenue"
                     fill="url(#barGradient)"
-                    radius={[10, 10, 0, 0]}
-                    barSize={40}
+                    radius={[8, 8, 0, 0]}
+                    barSize={32}
                   />
                   <Line
                     type="monotone"
@@ -197,115 +192,119 @@ export default function Dashboard() {
                     stroke="url(#lineGradient)"
                     strokeWidth={4}
                     dot={{ fill: '#fff', stroke: 'var(--primary)', strokeWidth: 2, r: 4 }}
-                    activeDot={{ r: 8, strokeWidth: 0, fill: 'var(--primary)' }}
+                    activeDot={{ r: 6, strokeWidth: 0, fill: 'var(--primary)' }}
                   />
                 </ComposedChart>
               </ResponsiveContainer>
             </div>
           </CardContent>
-          <div className="absolute -bottom-24 -right-24 w-64 h-64 bg-primary/10 rounded-full blur-[100px] z-0" />
         </Card>
 
-        {/* Recent Activity / Top Customers */}
-        <Card className="glass border-border shadow-md flex flex-col">
-          <CardHeader>
-            <CardTitle className="text-xl font-bold text-textMain">Top Fulfillments</CardTitle>
-            <p className="text-sm text-textMuted">Highest value orders recently placed</p>
-          </CardHeader>
-          <CardContent className="flex-1 overflow-auto">
-            <div className="space-y-6">
-              {orders.length === 0 ? (
-                <div className="text-center py-10">
-                  <Package className="w-10 h-10 text-border mx-auto mb-2" />
-                  <p className="text-textMuted text-sm">No activity records found</p>
-                </div>
-              ) : (
-                [...orders]
-                  .sort((a, b) => parseFloat(b.amount.replace(/[^0-9.-]+/g, "")) - parseFloat(a.amount.replace(/[^0-9.-]+/g, "")))
-                  .slice(0, 6)
-                  .map((order) => (
-                    <div key={order.id} className="flex items-center justify-between p-2 hover:bg-black/5 dark:hover:bg-white/5 rounded-xl transition-all">
-                      <div className="flex items-center gap-4">
-                        <div className="w-10 h-10 rounded-full bg-primary/10 flex items-center justify-center text-primary font-bold text-xs">
-                          {order.customer.charAt(0)}
-                        </div>
-                        <div>
-                          <p className="text-sm font-bold text-textMain leading-none">{order.customer}</p>
-                          <p className="text-xs text-textMuted mt-1">{order.id}</p>
-                        </div>
+        <Card className="glass border-border shadow-xl p-6">
+          <div className="flex justify-between items-center mb-6">
+            <div>
+              <CardTitle className="text-xl font-bold text-textMain">Top Products</CardTitle>
+              <p className="text-sm text-textMuted mt-1">High volume sales drivers.</p>
+            </div>
+          </div>
+          
+          <CardContent className="p-0">
+            <div className="space-y-5">
+              {(() => {
+                const productSales = {};
+                orders.forEach(o => {
+                  o.items?.forEach(item => {
+                    productSales[item.name] = (productSales[item.name] || 0) + item.quantity;
+                  });
+                });
+                const maxVal = Math.max(...Object.values(productSales), 1);
+                return Object.entries(productSales)
+                  .sort(([, a], [, b]) => b - a)
+                  .slice(0, 5)
+                  .map(([name, volume]) => (
+                    <div key={name} className="group cursor-pointer">
+                      <div className="flex items-center justify-between mb-2">
+                        <span className="text-xs font-bold text-textMain truncate max-w-[140px] group-hover:text-primary transition-colors">{name}</span>
+                        <span className="text-xs font-bold text-textMuted">{volume} units</span>
                       </div>
-                      <div className="text-right">
-                        <p className="text-sm font-black text-textMain">{order.amount}</p>
-                        <Badge variant={order.status === 'Completed' ? 'success' : 'warning'}>
-                          {order.status}
-                        </Badge>
+                      <div className="h-1.5 w-full bg-black/5 dark:bg-white/5 rounded-full overflow-hidden border border-white/5">
+                        <div 
+                          className="h-full bg-primary rounded-full transition-all duration-1000" 
+                          style={{ width: `${(volume / maxVal) * 100}%` }} 
+                        />
                       </div>
                     </div>
-                  ))
+                  ));
+              })()}
+              
+              {Object.keys(orders).length === 0 && (
+                <div className="text-center py-10 opacity-30">
+                   <Package className="w-10 h-10 mx-auto mb-3" />
+                   <p className="text-xs font-bold">Awaiting Data</p>
+                </div>
               )}
             </div>
           </CardContent>
-        </Card>
-
-        {/* Top Selling Products */}
-        <Card className="glass border-border shadow-md flex flex-col xl:col-span-1">
-          <CardHeader>
-            <CardTitle className="text-xl font-bold text-textMain">Top Moving Assets</CardTitle>
-            <p className="text-sm text-textMuted font-medium">Top products by unit volume</p>
-          </CardHeader>
-          <CardContent className="space-y-4">
-            {(() => {
-              const productSales = {};
-              orders.forEach(o => {
-                o.items?.forEach(item => {
-                  productSales[item.name] = (productSales[item.name] || 0) + item.quantity;
-                });
-              });
-              const maxVal = Math.max(...Object.values(productSales), 1);
-              return Object.entries(productSales)
-                .sort(([, a], [, b]) => b - a)
-                .slice(0, 5)
-                .map(([name, volume]) => (
-                  <div key={name} className="flex items-center justify-between p-3 bg-black/5 dark:bg-white/5 rounded-2xl border border-border/10">
-                    <div className="flex items-center gap-3">
-                      <div className="p-2 bg-primary/10 rounded-xl">
-                        <Package className="w-4 h-4 text-primary" />
-                      </div>
-                      <div>
-                        <p className="text-sm font-bold text-textMain">{name}</p>
-                        <p className="text-[10px] text-textMuted uppercase font-black">{volume} units moved</p>
-                      </div>
-                    </div>
-                    <div className="w-1.5 h-8 bg-primary/20 rounded-full overflow-hidden">
-                       <div className="bg-primary transition-all duration-1000" style={{ height: `${(volume / maxVal) * 100}%`, width: '100%' }} />
-                    </div>
-                  </div>
-                ));
-            })()}
-          </CardContent>
+          <div className="mt-8 pt-4 border-t border-border">
+             <Link to="/products">
+                <Button variant="secondary" className="w-full rounded-xl text-xs font-bold">
+                   Manage Inventory
+                </Button>
+             </Link>
+          </div>
         </Card>
       </div>
 
-      {lowStockCount > 0 && (
-        <Card className="border-l-4 border-l-rose-500 bg-rose-500/5 border-border overflow-hidden">
-          <CardContent className="py-4 flex flex-col sm:flex-row items-center justify-between gap-4">
-            <div className="flex items-center gap-3">
-              <div className="p-2 bg-rose-500 text-white rounded-lg">
-                <ArrowDownRight className="w-5 h-5" />
-              </div>
-              <div>
-                <h4 className="font-bold text-textMain">Inventory Risk Detected</h4>
-                <p className="text-sm text-textMuted">{lowStockCount} products are trending towards stockouts.</p>
-              </div>
-            </div>
-            <Link to="/inventory">
-              <Button size="sm" className="bg-rose-500 hover:bg-rose-600 text-white border-none shadow-sm">
-                Manage Inventory
-              </Button>
+      <div className="grid grid-cols-1 xl:grid-cols-2 gap-8">
+        <Card className="glass border-border shadow-xl p-6">
+          <div className="flex justify-between items-center mb-6">
+            <h3 className="text-xl font-bold text-textMain">Recent Orders</h3>
+            <Link to="/orders">
+              <Button size="sm" variant="ghost" className="text-xs font-bold text-primary">View All</Button>
             </Link>
-          </CardContent>
+          </div>
+          <div className="space-y-3">
+             {orders.slice(0, 5).map(order => (
+                <div key={order.id} className="flex items-center justify-between p-3 bg-card border border-border rounded-xl hover:border-primary/50 transition-all group">
+                   <div className="flex items-center gap-3">
+                      <div className="w-10 h-10 rounded-lg bg-primary/10 text-primary flex items-center justify-center font-bold text-sm">
+                         {order.customer.charAt(0)}
+                      </div>
+                      <div>
+                         <p className="text-sm font-bold text-textMain mb-0.5">{order.customer}</p>
+                         <p className="text-[10px] font-medium text-textMuted">{order.id} | {formatDate(order.date)}</p>
+                      </div>
+                   </div>
+                   <div className="text-right">
+                      <p className="text-sm font-bold text-textMain mb-1">{formatCurrency(order.amount)}</p>
+                      <Badge variant={statusStyles[order.status]}>{order.status}</Badge>
+                   </div>
+                </div>
+             ))}
+          </div>
         </Card>
-      )}
+
+        {lowStockCount > 0 && (
+          <Card className="bg-rose-500/5 border border-rose-500/20 p-6 flex flex-col justify-center relative overflow-hidden rounded-2xl">
+            <div className="relative z-10 flex flex-col md:flex-row items-center gap-6">
+               <div className="w-16 h-16 bg-rose-500 rounded-2xl flex items-center justify-center text-white shadow-xl shadow-rose-500/20 shrink-0">
+                  <AlertTriangle className="w-8 h-8" />
+               </div>
+               <div className="text-center md:text-left">
+                  <h4 className="text-xl font-bold text-textMain mb-1">Stock Alert</h4>
+                  <p className="text-sm text-textMuted mb-4">
+                    There are <span className="text-rose-500 font-bold">{lowStockCount} products</span> currently below their reorder threshold.
+                  </p>
+                  <Link to="/products">
+                    <Button className="bg-rose-500 hover:bg-rose-600 text-white rounded-xl text-xs font-bold px-6">
+                      Fix Now
+                    </Button>
+                  </Link>
+               </div>
+            </div>
+          </Card>
+        )}
+      </div>
     </div>
   );
 }

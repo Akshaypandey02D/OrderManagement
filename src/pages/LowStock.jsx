@@ -1,31 +1,21 @@
 import { motion, AnimatePresence } from 'framer-motion';
 import { Link } from 'react-router-dom';
 import { AlertTriangle, Package, Edit, RefreshCcw, CheckCircle2 } from 'lucide-react';
-import { useAppContext } from '../core/AppContext';
+import { useProductStore } from '../stores/useProductStore';
+import { useNotificationStore } from '../stores/useNotificationStore';
 import { Badge } from '../components/ui/Badge';
 import { Card } from '../components/ui/Card';
 import { Button } from '../components/ui/Button';
 
 export default function LowStock() {
-  const { products, setProducts, dispatchNotification } = useAppContext();
+  const { products, updateStock } = useProductStore();
+  const { dispatchNotification } = useNotificationStore();
 
-  // Filter only items below minQuantity 
-  const lowStockProducts = products.filter(p => p.stock < (p.minQuantity || 1));
+  const lowStockProducts = products.filter(p => Number(p.stock) < (p.minQuantity || 1));
 
   const handleRestock = (id) => {
-    const updated = products.map(p => {
-      if (p.id === id) {
-        const newStock = p.stock + 50; // auto Quick-Restock formula
-        return { 
-          ...p, 
-          stock: newStock, 
-          status: newStock < (p.minQuantity || 1) ? 'Low Stock' : 'In Stock' 
-        };
-      }
-      return p;
-    });
-    setProducts(updated);
-    dispatchNotification(`Supplies incoming: Add 50 units for Product ${id}.`, 'success');
+    updateStock(id, 50);
+    dispatchNotification(`Supplies incoming: Added 50 units for Product ${id}.`, 'success');
   };
 
   return (
@@ -49,7 +39,7 @@ export default function LowStock() {
           </div>
         )}
         <AnimatePresence>
-          {lowStockProducts.map((product, i) => (
+          {lowStockProducts.map((product) => (
             <motion.div
               layout
               initial={{ opacity: 0, scale: 0.95 }}

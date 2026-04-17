@@ -1,17 +1,25 @@
 import { useState, useEffect } from 'react';
 import { Outlet, NavLink, useLocation } from 'react-router-dom';
-import { LayoutDashboard, ShoppingCart, PlusCircle, Bell, Search, Menu, X, User, Package, CheckCircle2, XOctagon, AlertTriangle, Sun, Moon } from 'lucide-react';
+import { LayoutDashboard, ShoppingCart, PlusCircle, Bell, Menu, X, User, Package, CheckCircle2, XOctagon, AlertTriangle, Sun, Moon } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Suspense } from 'react';
-import { useAppContext } from '../core/AppContext';
+import { useNotificationStore } from '../stores/useNotificationStore';
+import { useUIStore } from '../stores/useUIStore';
+import ErrorBoundary from '../components/ui/ErrorBoundary';
 
 export default function DashboardLayout() {
-  const { notifications, markNotificationsRead, toasts, theme, toggleTheme } = useAppContext();
+  const { notifications, markNotificationsRead, toasts } = useNotificationStore();
+  const { theme, toggleTheme, initTheme } = useUIStore();
+
   const [isExpanded, setIsExpanded] = useState(true);
   const [notificationsOpen, setNotificationsOpen] = useState(false);
   const location = useLocation();
 
   const unreadCount = notifications.filter(n => !n.read).length;
+
+  useEffect(() => {
+    initTheme();
+  }, [initTheme]);
 
   const handleOpenNotifications = () => {
     setNotificationsOpen(!notificationsOpen);
@@ -28,7 +36,7 @@ export default function DashboardLayout() {
         setIsExpanded(true);
       }
     };
-    handleResize(); // Initial check
+    handleResize();
     window.addEventListener('resize', handleResize);
     return () => window.removeEventListener('resize', handleResize);
   }, []);
@@ -41,17 +49,13 @@ export default function DashboardLayout() {
     { name: 'Create Order', path: '/orders/new', icon: PlusCircle },
   ];
 
-  const sidebarWidth = isExpanded ? 'w-72' : 'w-20';
-
   return (
     <div className="flex h-screen overflow-hidden bg-background text-textMain selection:bg-primary/30">
-      {/* Dynamic Sidebar */}
       <motion.aside
         animate={{ width: isExpanded ? 288 : 80 }}
         transition={{ type: 'spring', stiffness: 300, damping: 30 }}
         className={`relative flex flex-col h-full bg-card shadow-[4px_0_24px_rgba(0,0,0,0.02)] dark:shadow-[4px_0_24px_rgba(0,0,0,0.2)] z-50 transition-colors duration-500`}
       >
-        {/* Sidebar Logo Area */}
         <div className="flex items-center px-6 h-20 shrink-0">
           <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-primary to-indigo-600 flex items-center justify-center shadow-lg shadow-primary/20 shrink-0">
             <span className="text-white font-black text-xl">F</span>
@@ -70,8 +74,7 @@ export default function DashboardLayout() {
           </AnimatePresence>
         </div>
 
-        {/* Navigation Items */}
-        <nav className="flex-1 px-4 py-8 space-y-2  no-scrollbar">
+        <nav className="flex-1 px-4 py-8 space-y-2 no-scrollbar">
           {navItems.map((item) => {
             const Icon = item.icon;
             const isActive = location.pathname === item.path || (item.path !== '/dashboard' && location.pathname.startsWith(item.path));
@@ -114,7 +117,6 @@ export default function DashboardLayout() {
           })}
         </nav>
 
-        {/* Sidebar Expansion Toggle at Bottom */}
         <div className="p-4 mt-auto">
           <button
             onClick={() => setIsExpanded(!isExpanded)}
@@ -141,11 +143,9 @@ export default function DashboardLayout() {
         </div>
       </motion.aside>
 
-      {/* Main Viewport */}
       <div className="flex flex-col flex-1 min-w-0 bg-background/50 relative">
         <header className="flex items-center justify-between h-20 px-8 bg-transparent z-40 transition-all duration-300">
           <div className="flex items-center gap-4">
-            {/* Dynamic Breadcrumb Placeholder */}
             <div className="h-2 w-2 rounded-full bg-primary animate-pulse" />
             <span className="text-sm font-black uppercase tracking-widest text-textMuted opacity-50">System Console</span>
           </div>
@@ -168,6 +168,21 @@ export default function DashboardLayout() {
                 </motion.div>
               </AnimatePresence>
             </button>
+
+            <div className="flex bg-black/5 dark:bg-white/5 p-1 rounded-xl border border-white/5">
+              <button
+                onClick={() => useUIStore.getState().setCurrency('INR')}
+                className={`px-3 py-1.5 rounded-lg text-[10px] font-black uppercase tracking-widest transition-all ${useUIStore(s => s.currency) === 'INR' ? 'bg-primary text-white shadow-lg shadow-primary/20' : 'text-textMuted hover:text-textMain'}`}
+              >
+                ₹ INR
+              </button>
+              <button
+                onClick={() => useUIStore.getState().setCurrency('USD')}
+                className={`px-3 py-1.5 rounded-lg text-[10px] font-black uppercase tracking-widest transition-all ${useUIStore(s => s.currency) === 'USD' ? 'bg-primary text-white shadow-lg shadow-primary/20' : 'text-textMuted hover:text-textMain'}`}
+              >
+                $ USD
+              </button>
+            </div>
 
             <div className="relative">
               <button
@@ -201,7 +216,7 @@ export default function DashboardLayout() {
                               <div className={`w-1.5 h-1.5 rounded-full mt-1.5 shrink-0 ${n.type === 'success' ? 'bg-emerald-500 shadow-[0_0_10px_#10b981]' : 'bg-rose-500 shadow-[0_0_10px_#f43f5e]'}`} />
                               <div>
                                 <p className="text-sm text-textMain font-bold leading-tight">{n.message}</p>
-                                <p className="text-[10px] text-textMuted font-black opacity-40 mt-1 uppercase">{n.time}</p>
+                                <p className="text-[10px] text-textMuted font-black opacity-40 mt-1 uppercase">{n.date}</p>
                               </div>
                             </div>
                           </div>
@@ -225,7 +240,6 @@ export default function DashboardLayout() {
           </div>
         </header>
 
-        {/* Global Toast Alerts */}
         <div className="fixed bottom-8 right-8 z-[200] flex flex-col gap-4 pointer-events-none">
           <AnimatePresence mode="popLayout">
             {toasts.map(toast => (
@@ -242,26 +256,26 @@ export default function DashboardLayout() {
                 </div>
                 <div>
                   <h5 className="text-xs font-black uppercase tracking-widest opacity-40 leading-none mb-1">{toast.type || 'info'}</h5>
-                  <p className="text-sm font-bold text-textMain">{toast.msg}</p>
+                  <p className="text-sm font-bold text-textMain">{toast.message}</p>
                 </div>
               </motion.div>
             ))}
           </AnimatePresence>
         </div>
 
-        {/* Viewport Content */}
         <main className="flex-1 overflow-y-auto overflow-x-hidden relative p-8">
-          {/* Decorative Background Elements */}
           <div className="absolute top-0 right-0 w-[500px] h-[500px] bg-primary/5 rounded-full blur-[120px] -z-10 animate-pulse pointer-events-none" />
           <div className="absolute bottom-0 left-0 w-[300px] h-[300px] bg-indigo-500/5 rounded-full blur-[100px] -z-10 pointer-events-none" />
 
-          <Suspense fallback={
-            <div className="flex flex-col items-center justify-center h-full min-h-[400px]">
-              <div className="w-10 h-10 border-4 border-primary/20 border-t-primary rounded-full animate-spin" />
-            </div>
-          }>
-            <Outlet />
-          </Suspense>
+          <ErrorBoundary>
+            <Suspense fallback={
+              <div className="flex flex-col items-center justify-center h-full min-h-[400px]">
+                <div className="w-10 h-10 border-4 border-primary/20 border-t-primary rounded-full animate-spin" />
+              </div>
+            }>
+              <Outlet />
+            </Suspense>
+          </ErrorBoundary>
         </main>
       </div>
     </div>

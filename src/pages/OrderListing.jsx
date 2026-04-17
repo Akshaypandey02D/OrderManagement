@@ -5,9 +5,11 @@ import { Search, Filter, MoreHorizontal, Eye, Edit, Trash2, LayoutGrid, List, Ch
 import { Button } from '../components/ui/Button';
 import { Badge } from '../components/ui/Badge';
 import { Card } from '../components/ui/Card';
-import { useAppContext } from '../core/AppContext';
+import { useOrderStore } from '../stores/useOrderStore';
+import { orderService } from '../services/orderService';
 import { AlertModal } from '../components/ui/Modal';
 import { EmptyState } from '../components/ui/EmptyState';
+import { formatCurrency } from '../utils/format';
 
 const statusStyles = {
   'Pending': 'warning',
@@ -17,7 +19,8 @@ const statusStyles = {
 };
 
 export default function OrderListing() {
-  const { orders, setOrders, products, setProducts, dispatchNotification } = useAppContext();
+  const { orders } = useOrderStore();
+  
   const [view, setView] = useState('table'); // 'table' or 'grid'
   const [search, setSearch] = useState('');
   const [statusFilter, setStatusFilter] = useState('All Statuses');
@@ -26,78 +29,13 @@ export default function OrderListing() {
   const [selectedIds, setSelectedIds] = useState([]);
 
   const handleStatusChange = (id, newStatus) => {
-    const order = orders.find(o => o.id === id);
-    if (!order || order.status === newStatus) {
-      setActiveMenuId(null);
-      return;
-    }
-
-    let updatedProducts = [...products];
-
-    // Handle inventory changes based on status transition
-    if (newStatus === 'Cancelled') {
-      // Order is being cancelled: Restore stock
-      updatedProducts = products.map(p => {
-        const itemInOrder = order.items?.find(item => item.id === p.id);
-        if (itemInOrder) {
-          const newStock = p.stock + itemInOrder.quantity;
-          return {
-            ...p,
-            stock: newStock,
-            status: newStock === 0 ? 'Out of Stock' : newStock < (p.minQuantity || 10) ? 'Low Stock' : 'In Stock'
-          };
-        }
-        return p;
-      });
-      dispatchNotification(`Order ${id} cancelled. Items returned to stock.`, 'warning');
-    } else if (order.status === 'Cancelled') {
-      // Order is being re-activated from Cancelled: Deduct stock again
-      updatedProducts = products.map(p => {
-        const itemInOrder = order.items?.find(item => item.id === p.id);
-        if (itemInOrder) {
-          const newStock = Math.max(0, p.stock - itemInOrder.quantity);
-          return {
-            ...p,
-            stock: newStock,
-            status: newStock === 0 ? 'Out of Stock' : newStock < (p.minQuantity || 10) ? 'Low Stock' : 'In Stock'
-          };
-        }
-        return p;
-      });
-      dispatchNotification(`Order ${id} re-activated. Items deducted from stock.`, 'info');
-    } else if (newStatus === 'Completed') {
-      dispatchNotification(`Order ${id} marked as completed.`, 'success');
-    }
-
-    setProducts(updatedProducts);
-    const updated = orders.map(o => o.id === id ? { ...o, status: newStatus } : o);
-    setOrders(updated);
+    orderService.updateOrderStatus(id, newStatus);
     setActiveMenuId(null);
   };
 
   const confirmDelete = () => {
     if (!deleteId) return;
-    const orderToDelete = orders.find(o => o.id === deleteId);
-    if (!orderToDelete) return;
-
-    // Restore stock to products
-    const restoredProducts = products.map(p => {
-      const itemInOrder = orderToDelete.items?.find(item => item.id === p.id);
-      if (itemInOrder) {
-        const newStock = p.stock + itemInOrder.quantity;
-        return {
-          ...p,
-          stock: newStock,
-          status: newStock === 0 ? 'Out of Stock' : newStock < (p.minQuantity || 10) ? 'Low Stock' : 'In Stock'
-        };
-      }
-      return p;
-    });
-
-    setProducts(restoredProducts);
-    const updatedOrders = orders.filter(o => o.id !== deleteId);
-    setOrders(updatedOrders);
-    dispatchNotification(`Order ${deleteId} deleted and inventory restored.`, 'success');
+    orderService.deleteOrder(deleteId);
     setDeleteId(null);
   };
 
@@ -117,10 +55,8 @@ export default function OrderListing() {
 
   const handleBulkDelete = () => {
     if (!selectedIds.length) return;
-    const updatedOrders = orders.filter(o => !selectedIds.includes(o.id));
-    setOrders(updatedOrders);
+    selectedIds.forEach(id => orderService.deleteOrder(id));
     setSelectedIds([]);
-    dispatchNotification(`${selectedIds.length} orders deleted successfully`, 'success');
   };
 
   const filteredOrders = orders.filter(o => {
@@ -154,7 +90,6 @@ export default function OrderListing() {
         </div>
       </div>
 
-      {/* Filters Toolbar */}
       <div className="flex flex-col lg:flex-row gap-3 md:gap-4">
         <div className="relative flex-1">
           <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-textMuted" />
@@ -184,11 +119,9 @@ export default function OrderListing() {
         </div>
       </div>
 
-      {/* Data Display */}
       {view === 'table' ? (
         <Card className="glass overflow-hidden shadow-lg border-white/5">
           <div className="overflow-x-auto">
-            {/* Desktop Table View */}
             <table className="w-full text-sm text-left hidden md:table">
               <thead className="text-[11px] text-textMuted uppercase tracking-widest bg-black/5 dark:bg-white/5 border-b border-border">
                 <tr>
@@ -210,7 +143,7 @@ export default function OrderListing() {
               <tbody>
                 {filteredOrders.length === 0 && (
                   <tr>
-                    <td colSpan="5" className="px-6 py-12 text-center text-textMuted font-medium italic">No orders found matching your search.</td>
+                    <td colSpan="6" className="px-6 py-12 text-center text-textMuted font-medium italic">No orders found matching your search.</td>
                   </tr>
                 )}
                 <AnimatePresence>
@@ -233,12 +166,15 @@ export default function OrderListing() {
                       </td>
                       <td className="px-6 py-4">
                         <div className="flex flex-col">
-                          <span className="font-bold text-textMain tracking-tight">{order.id}</span>
+                          <div className="flex items-center gap-2">
+                             <span className="font-bold text-textMain tracking-tight">{order.id}</span>
+                             {order.priority === 'High' && <Star className="w-3.5 h-3.5 fill-amber-500 text-amber-500 animate-pulse" />}
+                          </div>
                           <span className="text-xs text-textMuted uppercase tracking-tighter">{order.customer}</span>
                         </div>
                       </td>
                       <td className="px-6 py-4 text-textMuted font-medium">{order.date}</td>
-                      <td className="px-6 py-4 text-textMain font-bold">{order.amount}</td>
+                      <td className="px-6 py-4 text-textMain font-bold">{formatCurrency(order.amount)}</td>
                       <td className="px-6 py-4">
                         <Badge variant={statusStyles[order.status]}>{order.status}</Badge>
                       </td>
@@ -296,7 +232,6 @@ export default function OrderListing() {
               </tbody>
             </table>
 
-            {/* Mobile Card Table Replacement */}
             <div className="block md:hidden divide-y divide-border">
               {filteredOrders.length === 0 && (
                 <div className="p-12 text-center text-textMuted font-medium">No orders found.</div>
@@ -314,7 +249,7 @@ export default function OrderListing() {
                   <div className="flex justify-between items-center mb-4 bg-black/5 dark:bg-white/5 p-3 rounded-xl border border-border/50">
                     <div>
                       <p className="text-[10px] uppercase font-bold text-textMuted mb-0.5">Amount</p>
-                      <p className="text-sm font-bold text-textMain">{order.amount}</p>
+                      <p className="text-sm font-bold text-textMain">{formatCurrency(order.amount)}</p>
                     </div>
                     <div className="text-right">
                       <p className="text-[10px] uppercase font-bold text-textMuted mb-0.5">Date</p>
@@ -337,38 +272,11 @@ export default function OrderListing() {
                     <Button
                       variant="danger"
                       className="h-9 px-3"
-                      onClick={() => handleDelete(order.id)}
+                      onClick={() => setDeleteId(order.id)}
                     >
                       <Trash2 className="w-3.5 h-3.5" />
                     </Button>
                   </div>
-
-                  {/* Inline Status Menu for Mobile */}
-                  <AnimatePresence>
-                    {activeMenuId === order.id && (
-                      <motion.div
-                        initial={{ height: 0, opacity: 0 }}
-                        animate={{ height: 'auto', opacity: 1 }}
-                        exit={{ height: 0, opacity: 0 }}
-                        className="mt-3 bg-black/5 dark:bg-white/5 rounded-xl border border-border/50 overflow-hidden"
-                      >
-                        <div className="p-2 space-y-1">
-                          <p className="px-3 py-1 text-[10px] font-bold text-textMuted uppercase tracking-widest">Update Status</p>
-                          <div className="grid grid-cols-2 gap-1">
-                            {Object.keys(statusStyles).map(status => (
-                              <button
-                                key={status}
-                                onClick={() => handleStatusChange(order.id, status)}
-                                className={`text-left px-3 py-2 text-xs rounded-lg transition-colors flex justify-between items-center ${order.status === status ? 'bg-primary text-white font-bold' : 'text-textMain hover:bg-black/10'}`}
-                              >
-                                {status}
-                              </button>
-                            ))}
-                          </div>
-                        </div>
-                      </motion.div>
-                    )}
-                  </AnimatePresence>
                 </div>
               ))}
             </div>
@@ -416,7 +324,7 @@ export default function OrderListing() {
                       <div className="p-3.5 bg-black/5 dark:bg-white/5 rounded-2xl border border-border/50 flex justify-between items-center group/item hover:bg-primary/5 transition-colors">
                         <div>
                           <p className="text-[10px] font-bold text-textMuted uppercase tracking-widest mb-0.5">Total Amount</p>
-                          <p className="text-xl font-black text-textMain tracking-tight">{order.amount}</p>
+                          <p className="text-xl font-black text-textMain tracking-tight">{formatCurrency(order.amount)}</p>
                         </div>
                         <div className="w-10 h-10 rounded-xl bg-primary/10 flex items-center justify-center text-primary group-hover/item:scale-110 transition-transform">
                           <span className="text-lg font-bold">₹</span>
@@ -438,7 +346,7 @@ export default function OrderListing() {
                           <Eye className="w-4 h-4" />
                         </Link>
                         <button
-                          onClick={() => handleDelete(order.id)}
+                          onClick={() => setDeleteId(order.id)}
                           className="p-2 text-textMuted hover:text-rose-500 transition-colors rounded-lg hover:bg-rose-500/10"
                         >
                           <Trash2 className="w-4 h-4" />
@@ -494,7 +402,7 @@ export default function OrderListing() {
           </AnimatePresence>
         </div>
       )}
-      {/* Delete Confirmation */}
+
       <AlertModal
         isOpen={!!deleteId}
         onClose={() => setDeleteId(null)}
@@ -504,7 +412,7 @@ export default function OrderListing() {
         confirmText="Confirm Delete"
         variant="danger"
       />
-      {/* Bulk Actions Bar */}
+
       <AnimatePresence>
         {selectedIds.length > 0 && (
           <motion.div

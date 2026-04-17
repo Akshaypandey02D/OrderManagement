@@ -64,7 +64,7 @@ Sony Headphones,SNY-WH1000,29999,15,10,Low Stock`;
         id: p.id || `PRD-${Math.floor(Math.random() * 10000)}`,
         name: p.name || 'Unnamed Product',
         sku: p.sku || `SKU-${Math.random().toString(36).substr(2, 9).toUpperCase()}`,
-        price: `₹${Number(p.price || 0).toLocaleString('en-IN')}`,
+        price: Number(p.price || 0),
         stock: Number(p.stock || 0),
         minQuantity: Number(p.minQuantity || 10),
         status: p.status || (Number(p.stock) > 10 ? 'In Stock' : 'Low Stock')
@@ -208,7 +208,7 @@ Sony Headphones,SNY-WH1000,29999,15,10,Low Stock`;
                     <tr key={i} className="hover:bg-black/5 dark:hover:bg-white/5 transition-colors">
                       <td className="px-4 py-3 text-textMain font-bold">{p.name}</td>
                       <td className="px-4 py-3 text-textMuted">{p.sku}</td>
-                      <td className="px-4 py-3 text-textMain">{p.price}</td>
+                      <td className="px-4 py-3 text-textMain">₹{p.price.toLocaleString('en-IN')}</td>
                       <td className="px-4 py-3 text-center text-textMain">{p.stock}</td>
                     </tr>
                   ))}
