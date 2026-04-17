@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Link } from 'react-router-dom';
-import { Search, Filter, MoreHorizontal, Eye, Edit, Trash2, LayoutGrid, List, Check, Star, ChevronDown, Clock } from 'lucide-react';
+import { Search, Filter, MoreHorizontal, Eye, Trash2, LayoutGrid, List, Check, Star, ChevronDown, Clock } from 'lucide-react';
 import { Button } from '../components/ui/Button';
 import { Badge } from '../components/ui/Badge';
 import { Card } from '../components/ui/Card';

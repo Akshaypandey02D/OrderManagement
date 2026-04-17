@@ -3,7 +3,7 @@ import {
 } from 'recharts';
 import { Card, CardHeader, CardTitle, CardContent } from '../components/ui/Card';
 import {
-  ArrowDownRight, Package, CheckCircle2, CreditCard, Clock, Star, TrendingUp,
+  AlertTriangle, Package, CheckCircle2, CreditCard, Clock, Star,
   LayoutDashboard
 } from 'lucide-react';
 import { Badge } from '../components/ui/Badge';

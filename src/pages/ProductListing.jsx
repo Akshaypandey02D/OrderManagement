@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Link } from 'react-router-dom';
-import { Search, Filter, MoreHorizontal, Edit, Trash2, LayoutGrid, List, Package, Upload } from 'lucide-react';
+import { Search, Filter, Edit, Trash2, LayoutGrid, List, Package, Upload } from 'lucide-react';
 import { useProductStore } from '../stores/useProductStore';
 import { useNotificationStore } from '../stores/useNotificationStore';
 import { Button } from '../components/ui/Button';

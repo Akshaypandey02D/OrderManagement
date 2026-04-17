@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { useParams, Link } from 'react-router-dom';
-import { ArrowLeft, Printer, Edit, Package, Truck, User, FileText, CheckCircle2, History, AlertCircle } from 'lucide-react';
+import { ArrowLeft, Printer, Edit, Package, User, FileText, CheckCircle2, History, AlertCircle } from 'lucide-react';
 import { Button } from '../components/ui/Button';
 import { Badge } from '../components/ui/Badge';
 import { Card, CardContent } from '../components/ui/Card';
