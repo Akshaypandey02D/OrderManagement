@@ -93,21 +93,33 @@ export default function ProductForm() {
   };
 
   return (
-    <div className="max-w-2xl mx-auto space-y-6 pb-10">
-      <div className="flex items-center justify-between">
-        <div className="flex items-center space-x-4">
-          <Button variant="ghost" size="sm" onClick={() => navigate('/products')}>
-            <ArrowLeft className="w-4 h-4 mr-2" /> Back
+    <div className="max-w-4xl mx-auto space-y-6 pb-10 px-4">
+      <div className="flex flex-col space-y-6">
+        <div className="flex justify-between items-start">
+          <Button 
+            variant="secondary" 
+            size="icon" 
+            onClick={() => navigate('/products')}
+            className="rounded-xl shadow-sm hover:border-primary/50 transition-all"
+          >
+            <ArrowLeft className="w-5 h-5" />
           </Button>
+
+          {isEditing && (
+            <Button variant="danger" size="sm" onClick={handleDelete}>
+              <Trash2 className="w-4 h-4 mr-2" /> Delete
+            </Button>
+          )}
+        </div>
+        
+        <div>
           <h2 className="text-2xl font-bold tracking-tight text-textMain">
             {isEditing ? 'Edit Product' : 'Add New Product'}
           </h2>
+          <p className="text-sm text-textMuted mt-1 uppercase tracking-widest font-black opacity-50">
+            {isEditing ? `Stock Module Configuration` : 'Initialize New Inventory Asset'}
+          </p>
         </div>
-        {isEditing && (
-          <Button variant="danger" size="sm" onClick={handleDelete}>
-            <Trash2 className="w-4 h-4 mr-2" /> Delete
-          </Button>
-        )}
       </div>
 
       <Card className="glass shadow-xl border-white/5">
@@ -122,7 +134,7 @@ export default function ProductForm() {
               <div className="space-y-2 md:col-span-2">
                 <label className="text-sm font-medium text-textMuted">Product Name *</label>
                 <Input 
-                  placeholder="e.g. Wireless Headphones" 
+                  placeholder="e.g. Ultra-Wide 4K Monitor" 
                   {...register('name')}
                   error={errors.name?.message}
                 />
@@ -131,7 +143,7 @@ export default function ProductForm() {
               <div className="space-y-2">
                 <label className="text-sm font-medium text-textMuted">SKU *</label>
                 <Input 
-                  placeholder="e.g. WH-100-BLK" 
+                  placeholder="e.g. MON-4K-2026" 
                   {...register('sku')}
                   error={errors.sku?.message}
                 />
@@ -142,7 +154,7 @@ export default function ProductForm() {
                 <Input 
                   type="number" 
                   step="0.01" 
-                  placeholder="0.00" 
+                  placeholder="e.g. 24999.00" 
                   {...register('price')}
                   error={errors.price?.message}
                 />
@@ -152,7 +164,7 @@ export default function ProductForm() {
                 <label className="text-sm font-medium text-textMuted">Initial Stock *</label>
                 <Input 
                   type="number" 
-                  placeholder="0" 
+                  placeholder="e.g. 100" 
                   {...register('stock')}
                   error={errors.stock?.message}
                 />
@@ -162,7 +174,7 @@ export default function ProductForm() {
                 <label className="text-sm font-medium text-textMuted">Low Stock Alert Level</label>
                 <Input 
                   type="number" 
-                  placeholder="10" 
+                  placeholder="Default is 10" 
                   {...register('minQuantity')}
                   error={errors.minQuantity?.message}
                 />
@@ -173,7 +185,7 @@ export default function ProductForm() {
                 <textarea 
                   rows={4}
                   className="w-full bg-card border border-border rounded-lg px-4 py-2.5 text-sm text-textMain focus:ring-2 focus:ring-primary placeholder:text-textMuted outline-none resize-none"
-                  placeholder="Provide a detailed description of the product..."
+                  placeholder="e.g. Describe product specifications, warranty details, and key features..."
                   {...register('description')}
                 ></textarea>
                 {errors.description && <p className="text-xs text-rose-500">{errors.description.message}</p>}

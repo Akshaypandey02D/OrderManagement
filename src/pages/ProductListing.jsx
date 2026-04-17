@@ -244,9 +244,10 @@ export default function ProductListing() {
                 animate={{ opacity: 1, scale: 1 }}
                 exit={{ opacity: 0, scale: 0.95 }}
                 key={product.id}
+                className="h-full"
               >
-                <Card className="glass relative group hover:border-primary/50 transition-all hover:shadow-xl hover:-translate-y-1">
-                  <div className="p-5 md:p-6">
+                <Card className="glass relative group hover:border-primary/50 transition-all hover:shadow-xl hover:-translate-y-1 h-full flex flex-col">
+                  <div className="p-5 md:p-6 flex-1 flex flex-col">
                     <div className="flex justify-between items-start mb-4">
                       <div className="flex items-center gap-3">
                         <div className="w-11 h-11 rounded-xl bg-primary/10 border border-primary/20 flex items-center justify-center shrink-0">
@@ -271,7 +272,7 @@ export default function ProductListing() {
                       </div>
                     </div>
 
-                    <div className="mt-6 pt-4 border-t border-border flex justify-between items-center">
+                    <div className="mt-auto pt-4 border-t border-border flex justify-between items-center">
                       <span className="text-[10px] font-bold text-textMuted tracking-wider uppercase">ID: {product.id}</span>
                       <div className="flex space-x-1">
                         <Link to={`/products/${product.id}/edit`}>

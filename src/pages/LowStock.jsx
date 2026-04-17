@@ -47,9 +47,10 @@ export default function LowStock() {
               exit={{ opacity: 0, scale: 0.9, y: 30 }}
               transition={{ duration: 0.2 }}
               key={product.id}
+              className="h-full"
             >
-              <Card className="glass relative group hover:border-amber-500/50 transition-colors border-l-4 border-l-amber-500">
-                <div className="p-5">
+              <Card className="glass relative group hover:border-amber-500/50 transition-colors border-l-4 border-l-amber-500 h-full flex flex-col">
+                <div className="p-5 flex-1 flex flex-col">
                   <div className="flex justify-between items-start mb-4">
                     <div className="flex items-center space-x-3">
                       <div className="w-10 h-10 rounded-md bg-black/5 dark:bg-white/5 border border-border flex items-center justify-center flex-shrink-0">

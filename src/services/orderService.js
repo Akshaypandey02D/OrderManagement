@@ -16,13 +16,8 @@ export const orderService = {
     
     const orderId = `ORD-${Math.floor(Math.random() * 1000).toString().padStart(3, '0')}`;
     
-    // Check for backorders
-    let hasBackorder = false;
+    // Check for stock and update
     formData.items.forEach(item => {
-      const product = products.find(p => p.id === item.id);
-      if (product && product.stock < item.quantity) {
-        hasBackorder = true;
-      }
       updateStock(item.id, -item.quantity);
     });
 
@@ -30,18 +25,15 @@ export const orderService = {
       id: orderId,
       ...formData,
       amount: total, 
-      status: hasBackorder ? 'Backordered' : 'Pending',
-      priority: hasBackorder ? 'High' : (formData.priority || 'Normal'),
+      status: 'Pending',
+      priority: formData.priority || 'Normal',
       history: [
-        { date: new Date().toLocaleString(), event: 'Order Created', note: hasBackorder ? 'Contains items currently out of stock.' : 'Order initialized in system.' }
+        { date: new Date().toLocaleString(), event: 'Order Created', note: 'Order initialized in system.' }
       ]
     };
     
     addOrder(newOrder);
-    dispatchNotification(
-      hasBackorder ? `Order ${orderId} created as Backorder` : `Order ${orderId} created successfully`, 
-      hasBackorder ? 'warning' : 'success'
-    );
+    dispatchNotification(`Order ${orderId} created successfully`, 'success');
     
     return newOrder;
   },

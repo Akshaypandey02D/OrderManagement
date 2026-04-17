@@ -16,7 +16,8 @@ import {
   Calendar, 
   GripVertical,
   Star,
-  ArrowLeft
+  ArrowLeft,
+  CheckCircle2
 } from 'lucide-react';
 import { DragDropContext, Droppable, Draggable } from '@hello-pangea/dnd';
 import { createPortal } from 'react-dom';
@@ -28,6 +29,7 @@ import { Card, CardContent } from '../components/ui/Card';
 import { Input } from '../components/ui/Input';
 import { useOrderStore } from '../stores/useOrderStore';
 import { useProductStore } from '../stores/useProductStore';
+import { useNotificationStore } from '../stores/useNotificationStore';
 import { orderService } from '../services/orderService';
 
 const orderSchema = z.object({
@@ -41,6 +43,9 @@ const orderSchema = z.object({
     invalid_type_error: "Invalid date format",
   }),
   priority: z.enum(['Normal', 'High']),
+  shippingMethod: z.string().min(1, 'Please select a shipping method'),
+  shippingAddress: z.string().min(5, 'Shipping address is required'),
+  notes: z.string().optional(),
   items: z.array(z.object({
     id: z.string(),
     name: z.string(),
@@ -62,6 +67,7 @@ export default function OrderForm() {
   
   const { getOrderById, updateOrder } = useOrderStore();
   const { products } = useProductStore();
+  const { dispatchNotification } = useNotificationStore();
   
   const [currentStep, setCurrentStep] = useState(1);
   const [isAddingItem, setIsAddingItem] = useState(false);
@@ -75,6 +81,7 @@ export default function OrderForm() {
     setValue,
     watch,
     trigger,
+    reset,
     formState: { errors }
   } = useForm({
     resolver: zodResolver(orderSchema),
@@ -84,9 +91,43 @@ export default function OrderForm() {
       phone: '',
       date: new Date(),
       priority: 'Normal',
+      shippingMethod: 'Standard Shipping (3-5 days)',
+      shippingAddress: '',
+      notes: '',
       items: []
     }
   });
+
+  // Load draft from localStorage on mount
+  useEffect(() => {
+    if (!isEditing) {
+      const savedDraft = localStorage.getItem('order-form-draft');
+      if (savedDraft) {
+        try {
+          const draft = JSON.parse(savedDraft);
+          Object.keys(draft).forEach(key => {
+            if (key === 'date' && draft[key]) {
+              setValue(key, new Date(draft[key]));
+            } else {
+              setValue(key, draft[key]);
+            }
+          });
+        } catch (e) {
+          console.error("Failed to parse draft", e);
+        }
+      }
+    }
+  }, [isEditing, setValue]);
+
+  // Save draft to localStorage on change
+  useEffect(() => {
+    if (!isEditing) {
+      const subscription = watch((value) => {
+        localStorage.setItem('order-form-draft', JSON.stringify(value));
+      });
+      return () => subscription.unsubscribe();
+    }
+  }, [watch, isEditing]);
 
   const { fields, append, remove, move } = useFieldArray({
     control,
@@ -104,6 +145,9 @@ export default function OrderForm() {
         setValue('phone', order.phone);
         setValue('date', new Date(order.date));
         setValue('priority', order.priority || 'Normal');
+        setValue('shippingMethod', order.shippingMethod || 'Standard Shipping (3-5 days)');
+        setValue('shippingAddress', order.shippingAddress || '');
+        setValue('notes', order.notes || '');
         setValue('items', order.items || []);
       }
     }
@@ -114,17 +158,40 @@ export default function OrderForm() {
     const product = products.find(p => p.id === selectedProductId);
     if (!product) return;
     
+    // Inventory Check
+    const existingItem = formItems.find(item => item.id === selectedProductId);
+    const existingQuantity = existingItem ? existingItem.quantity : 0;
+    const totalNewQuantity = existingQuantity + quantity;
+
+    if (totalNewQuantity > product.stock) {
+      dispatchNotification(
+        `Insufficient Stock: Only ${product.stock} units of ${product.name} available.`, 
+        'danger'
+      );
+      return;
+    }
+
     let productPrice = product.price;
     if (typeof productPrice === 'string') {
        productPrice = Number(productPrice.replace(/[^0-9.-]+/g, ""));
     }
 
-    append({
-      id: product.id,
-      name: product.name,
-      price: productPrice,
-      quantity: quantity
-    });
+    if (existingItem) {
+      // Update existing item quantity
+      const updatedItems = formItems.map(item => 
+        item.id === selectedProductId 
+          ? { ...item, quantity: item.quantity + quantity }
+          : item
+      );
+      setValue('items', updatedItems);
+    } else {
+      append({
+        id: product.id,
+        name: product.name,
+        price: productPrice,
+        quantity: quantity
+      });
+    }
     
     setIsAddingItem(false);
     setSelectedProductId('');
@@ -147,6 +214,7 @@ export default function OrderForm() {
       navigate('/orders');
     } else {
       orderService.createOrder(submissionData);
+      localStorage.removeItem('order-form-draft');
       navigate('/orders');
     }
   };
@@ -155,6 +223,7 @@ export default function OrderForm() {
     let fieldsToValidate = [];
     if (currentStep === 1) fieldsToValidate = ['customer', 'email', 'phone', 'date', 'priority'];
     if (currentStep === 2) fieldsToValidate = ['items'];
+    if (currentStep === 3) fieldsToValidate = ['shippingMethod', 'shippingAddress'];
 
     const isValid = await trigger(fieldsToValidate);
     if (isValid) {
@@ -166,19 +235,22 @@ export default function OrderForm() {
 
   return (
     <div className="max-w-4xl mx-auto space-y-8 pb-10 px-4">
-      <div className="flex items-center justify-between">
-        <div className="flex items-center space-x-4">
-          <Button variant="ghost" size="sm" onClick={() => navigate('/orders')}>
-            <ArrowLeft className="w-4 h-4 mr-2" /> Back
-          </Button>
-          <div>
-            <h2 className="text-2xl font-bold tracking-tight text-textMain">
-              {isEditing ? `Edit Order #${id}` : 'Create New Order'}
-            </h2>
-            <p className="text-sm text-textMuted mt-1">
-              {isEditing ? 'Update the details for this order.' : 'Fill out the details below to manage your order.'}
-            </p>
-          </div>
+      <div className="flex flex-col space-y-6">
+        <Button 
+          variant="secondary" 
+          size="icon" 
+          onClick={() => navigate('/orders')}
+          className="rounded-xl shadow-sm hover:border-primary/50 transition-all"
+        >
+          <ArrowLeft className="w-5 h-5" />
+        </Button>
+        <div>
+          <h2 className="text-2xl font-bold tracking-tight text-textMain">
+            {isEditing ? `Edit Order #${id}` : 'Create New Order'}
+          </h2>
+          <p className="text-sm text-textMuted mt-1">
+            {isEditing ? 'Update the details for this order.' : 'Fill out the details below to manage your order.'}
+          </p>
         </div>
       </div>
 
@@ -238,7 +310,7 @@ export default function OrderForm() {
                       <div className="space-y-2">
                         <label className="text-sm font-medium text-textMuted">Customer Name *</label>
                         <Input 
-                          placeholder="e.g. John Doe" 
+                          placeholder="e.g. Acme Tech Solutions" 
                           {...register('customer')}
                           error={errors.customer?.message}
                         />
@@ -247,7 +319,7 @@ export default function OrderForm() {
                         <label className="text-sm font-medium text-textMuted">Email Address *</label>
                         <Input 
                           type="email" 
-                          placeholder="john@example.com"
+                          placeholder="billing@acmetech.com"
                           {...register('email')}
                           error={errors.email?.message}
                         />
@@ -299,7 +371,7 @@ export default function OrderForm() {
                       <div className="space-y-2 md:col-span-2">
                         <label className="text-sm font-medium text-textMuted">Phone Number</label>
                         <Input 
-                          placeholder="e.g. 9876543210" 
+                          placeholder="e.g. +91 98765 43210" 
                           {...register('phone')}
                           error={errors.phone?.message}
                         />
@@ -484,25 +556,82 @@ export default function OrderForm() {
                   <div className="space-y-8">
                     <div className="flex items-center space-x-2 border-b border-border pb-4">
                       <CreditCard className="w-5 h-5 text-primary" />
-                      <h3 className="text-lg font-medium text-textMain">Shipping & Payment</h3>
+                      <h3 className="text-lg font-medium text-textMain">Shipping & Review</h3>
                     </div>
-                    <div className="space-y-6">
-                       <div className="space-y-2">
-                         <label className="text-sm font-medium text-textMuted">Shipping Method</label>
-                         <select className="w-full h-10 bg-card border border-border rounded-lg px-3 text-sm text-textMain focus:ring-2 focus:ring-primary outline-none">
-                           <option>Standard Shipping (3-5 days)</option>
-                           <option>Express Shipping (1-2 days)</option>
-                           <option>Next Day Delivery (24-48h)</option>
-                         </select>
-                       </div>
-                       <div className="space-y-2">
-                         <label className="text-sm font-medium text-textMuted">Special Instructions / Notes</label>
-                         <textarea 
-                           rows={5}
-                           className="w-full bg-card border border-border rounded-xl px-4 py-3 text-sm text-textMain focus:ring-2 focus:ring-primary placeholder:text-textMuted outline-none resize-none"
-                           placeholder="Enter any additional details about the order..."
-                         ></textarea>
-                       </div>
+                    
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
+                      <div className="space-y-6">
+                        <div className="space-y-2">
+                          <label className="text-sm font-medium text-textMuted">Shipping Method *</label>
+                          <select 
+                            {...register('shippingMethod')}
+                            className={`w-full h-10 bg-card border border-border rounded-lg px-3 text-sm text-textMain focus:ring-2 focus:ring-primary outline-none ${errors.shippingMethod ? 'border-rose-500' : ''}`}
+                          >
+                            <option>Standard Shipping (3-5 days)</option>
+                            <option>Express Shipping (1-2 days)</option>
+                            <option>Next Day Delivery (24-48h)</option>
+                          </select>
+                          {errors.shippingMethod && <p className="text-xs text-rose-500">{errors.shippingMethod.message}</p>}
+                        </div>
+
+                        <div className="space-y-2">
+                          <label className="text-sm font-medium text-textMuted">Shipping Address *</label>
+                          <textarea 
+                            {...register('shippingAddress')}
+                            rows={3}
+                            className={`w-full bg-card border border-border rounded-xl px-4 py-3 text-sm text-textMain focus:ring-2 focus:ring-primary placeholder:text-textMuted outline-none resize-none ${errors.shippingAddress ? 'border-rose-500' : ''}`}
+                            placeholder="e.g. 45th Main St, Suite 500, Bangalore, KA, 560001"
+                          ></textarea>
+                          {errors.shippingAddress && <p className="text-xs text-rose-500">{errors.shippingAddress.message}</p>}
+                        </div>
+
+                        <div className="space-y-2">
+                          <label className="text-sm font-medium text-textMuted">Order Notes (Optional)</label>
+                          <textarea 
+                            {...register('notes')}
+                            rows={3}
+                            className="w-full bg-card border border-border rounded-xl px-4 py-3 text-sm text-textMain focus:ring-2 focus:ring-primary placeholder:text-textMuted outline-none resize-none"
+                            placeholder="e.g. Please leave at front desk and handle with care."
+                          ></textarea>
+                        </div>
+                      </div>
+
+                      <div className="space-y-6">
+                        <div className="bg-black/5 dark:bg-white/5 rounded-2xl p-6 border border-border border-dashed">
+                          <h4 className="text-xs font-black uppercase tracking-widest text-textMuted mb-4">Order Summary</h4>
+                          <div className="space-y-3">
+                            {formItems.map((item, i) => (
+                              <div key={i} className="flex justify-between text-sm">
+                                <span className="text-textMuted">{item.name} x{item.quantity}</span>
+                                <span className="font-bold text-textMain">₹{(item.price * item.quantity).toLocaleString('en-IN')}</span>
+                              </div>
+                            ))}
+                            <div className="pt-4 border-t border-border mt-4 space-y-2">
+                              <div className="flex justify-between text-xs font-bold text-textMuted uppercase tracking-widest">
+                                <span>Subtotal</span>
+                                <span>₹{formItems.reduce((acc, item) => acc + (item.price * item.quantity), 0).toLocaleString('en-IN')}</span>
+                              </div>
+                              <div className="flex justify-between text-xs font-bold text-textMuted uppercase tracking-widest">
+                                <span>Shipping</span>
+                                <span>₹50</span>
+                              </div>
+                              <div className="flex justify-between text-sm font-black text-primary pt-2">
+                                <span>Total Amount</span>
+                                <span>₹{(formItems.reduce((acc, item) => acc + (item.price * item.quantity), 0) + 50 + (formItems.reduce((acc, item) => acc + (item.price * item.quantity), 0) * 0.1)).toLocaleString('en-IN')}</span>
+                              </div>
+                            </div>
+                          </div>
+                        </div>
+
+                        <div className="p-4 bg-primary/5 rounded-xl border border-primary/20">
+                          <div className="flex items-center gap-3 text-primary">
+                            <CheckCircle2 className="w-5 h-5 flex-shrink-0" />
+                            <p className="text-xs font-medium leading-relaxed">
+                              By creating this order, inventory levels will be adjusted automatically. You can modify this order later from the listing page.
+                            </p>
+                          </div>
+                        </div>
+                      </div>
                     </div>
                   </div>
                 )}

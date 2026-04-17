@@ -1,11 +1,12 @@
 import { useState, useEffect } from 'react';
 import { Outlet, NavLink, useLocation } from 'react-router-dom';
-import { LayoutDashboard, ShoppingCart, PlusCircle, Bell, Menu, X, User, Package, CheckCircle2, XOctagon, AlertTriangle, Sun, Moon } from 'lucide-react';
+import { LayoutDashboard, ShoppingCart, PlusCircle, Bell, Menu, X, User, Package, CheckCircle2, XOctagon, AlertTriangle, Sun, Moon, ChevronDown, ChevronRight } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Suspense } from 'react';
 import { useNotificationStore } from '../stores/useNotificationStore';
 import { useUIStore } from '../stores/useUIStore';
 import ErrorBoundary from '../components/ui/ErrorBoundary';
+import MockDataOnboarding from '../components/MockDataOnboarding';
 
 export default function DashboardLayout() {
   const { notifications, markNotificationsRead, toasts } = useNotificationStore();
@@ -43,11 +44,25 @@ export default function DashboardLayout() {
 
   const navItems = [
     { name: 'Dashboard', path: '/dashboard', icon: LayoutDashboard },
-    { name: 'Products', path: '/products', icon: Package },
-    { name: 'Low Stock', path: '/low-stock', icon: AlertTriangle },
-    { name: 'Orders Listing', path: '/orders', icon: ShoppingCart },
+    { 
+      name: 'Inventory', 
+      icon: Package, 
+      children: [
+        { name: 'Products', path: '/products' },
+        { name: 'Low Stock', path: '/low-stock' },
+      ]
+    },
+    { name: 'Orders', path: '/orders', icon: ShoppingCart, end: true },
     { name: 'Create Order', path: '/orders/new', icon: PlusCircle },
   ];
+
+  const [openMenus, setOpenMenus] = useState(['Inventory']);
+
+  const toggleMenu = (name) => {
+    setOpenMenus(prev => 
+      prev.includes(name) ? prev.filter(n => n !== name) : [...prev, name]
+    );
+  };
 
   return (
     <div className="flex h-screen overflow-hidden bg-background text-textMain selection:bg-primary/30">
@@ -74,16 +89,72 @@ export default function DashboardLayout() {
           </AnimatePresence>
         </div>
 
-        <nav className="flex-1 px-4 py-8 space-y-2 no-scrollbar">
+        <nav className="flex-1 px-4 py-8 space-y-2 no-scrollbar overflow-y-auto">
           {navItems.map((item) => {
             const Icon = item.icon;
-            const isActive = location.pathname === item.path || (item.path !== '/dashboard' && location.pathname.startsWith(item.path));
+            const hasChildren = item.children && item.children.length > 0;
+            const isOpen = openMenus.includes(item.name);
+            const isChildActive = hasChildren && item.children.some(child => location.pathname === child.path);
+            const isParentActive = !hasChildren && (item.end ? location.pathname === item.path : location.pathname.startsWith(item.path));
+            const isActive = isParentActive || isChildActive;
+
+            if (hasChildren) {
+              return (
+                <div key={item.name} className="space-y-1">
+                  <button
+                    onClick={() => isExpanded && toggleMenu(item.name)}
+                    className={`w-full flex items-center h-12 rounded-xl transition-all duration-300 group relative ${isChildActive
+                      ? 'bg-primary/10 text-primary border border-primary/20'
+                      : 'text-textMuted hover:text-textMain hover:bg-primary/5'
+                    }`}
+                  >
+                    <div className={`flex items-center justify-center ${isExpanded ? 'w-12' : 'w-full'} shrink-0`}>
+                      <Icon className={`w-5 h-5 transition-transform duration-300 ${isChildActive ? 'scale-110' : 'group-hover:scale-110'}`} />
+                    </div>
+                    {isExpanded && (
+                      <>
+                        <span className="font-bold text-sm tracking-wide ml-1 flex-1 text-left">{item.name}</span>
+                        {isOpen ? <ChevronDown className="w-4 h-4 mr-4 opacity-50" /> : <ChevronRight className="w-4 h-4 mr-4 opacity-50" />}
+                      </>
+                    )}
+                  </button>
+                  
+                  <AnimatePresence>
+                    {isExpanded && isOpen && (
+                      <motion.div
+                        initial={{ height: 0, opacity: 0 }}
+                        animate={{ height: 'auto', opacity: 1 }}
+                        exit={{ height: 0, opacity: 0 }}
+                        className="overflow-hidden"
+                      >
+                        <div className="ml-12 space-y-2 py-2 pr-2">
+                          {item.children.map(child => (
+                            <NavLink
+                              key={child.name}
+                              to={child.path}
+                              className={({ isActive }) =>
+                                `flex items-center h-10 rounded-lg px-4 transition-all duration-300 text-xs font-black tracking-tight ${isActive 
+                                  ? 'bg-primary text-white shadow-lg shadow-primary/20' 
+                                  : 'text-textMuted hover:text-textMain hover:bg-white/5'}`
+                              }
+                            >
+                              {child.name}
+                            </NavLink>
+                          ))}
+                        </div>
+                      </motion.div>
+                    )}
+                  </AnimatePresence>
+                </div>
+              );
+            }
 
             return (
               <NavLink
                 key={item.name}
                 to={item.path}
-                className={() =>
+                end={item.end}
+                className={({ isActive }) =>
                   `flex items-center h-12 rounded-xl transition-all duration-300 group relative ${isActive
                     ? 'bg-primary text-white shadow-xl shadow-primary/30'
                     : 'text-textMuted hover:text-textMain hover:bg-primary/5'
@@ -91,7 +162,7 @@ export default function DashboardLayout() {
                 }
               >
                 <div className={`flex items-center justify-center ${isExpanded ? 'w-12 mx-0' : 'w-full'} shrink-0`}>
-                  <Icon className={`w-5 h-5 transition-transform duration-300 ${isActive ? 'scale-110' : 'group-hover:scale-110'}`} />
+                  <Icon className={`w-5 h-5 transition-transform duration-300 group-hover:scale-110`} />
                 </div>
 
                 <AnimatePresence>
@@ -252,6 +323,8 @@ export default function DashboardLayout() {
         <main className="flex-1 overflow-y-auto overflow-x-hidden relative p-8">
           <div className="absolute top-0 right-0 w-[500px] h-[500px] bg-primary/5 rounded-full blur-[120px] -z-10 animate-pulse pointer-events-none" />
           <div className="absolute bottom-0 left-0 w-[300px] h-[300px] bg-indigo-500/5 rounded-full blur-[100px] -z-10 pointer-events-none" />
+
+          <MockDataOnboarding />
 
           <ErrorBoundary>
             <Suspense fallback={

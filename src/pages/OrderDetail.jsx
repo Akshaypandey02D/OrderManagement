@@ -13,8 +13,7 @@ const statusStyles = {
   'Pending': 'warning',
   'In Progress': 'primary',
   'Completed': 'success',
-  'Cancelled': 'danger',
-  'Backordered': 'danger'
+  'Cancelled': 'danger'
 };
 
 export default function OrderDetail() {
@@ -250,11 +249,10 @@ export default function OrderDetail() {
                   </div>
                 </div>
                 <div className="pt-6 border-t border-border">
-                  <p className="text-[10px] font-black uppercase text-textMuted tracking-widest mb-3">Delivery Coordinates</p>
-                  <p className="text-xs font-medium text-textMain leading-relaxed p-4 bg-black/5 dark:bg-white/5 rounded-2xl border border-border shadow-inner">
-                    Global Distribution Hub 7<br/>
-                    Warehouse B-42, Sector 9<br/>
-                    Logistics Park Central
+                  <p className="text-[10px] font-black uppercase text-textMuted tracking-widest mb-3">Delivery Information</p>
+                  <p className="text-xs font-bold text-primary mb-2 uppercase tracking-tighter">{order.shippingMethod || 'Standard Ground Shipping'}</p>
+                  <p className="text-xs font-medium text-textMain leading-relaxed p-4 bg-black/5 dark:bg-white/5 rounded-2xl border border-border shadow-inner whitespace-pre-wrap">
+                    {order.shippingAddress || 'No distribution coordinates provided for this shipment module.'}
                   </p>
                 </div>
               </CardContent>
