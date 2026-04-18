@@ -77,32 +77,32 @@ export default function Dashboard() {
             <p className="text-sm text-textMuted mt-1">Real-time performance and inventory metrics.</p>
           </div>
         </div>
-        
+
         <div className="flex items-center gap-3 p-1 bg-card border border-border rounded-xl">
-           <Button 
-             variant={isCustomizing ? "primary" : "secondary"} 
-             size="sm" 
-             onClick={() => setIsCustomizing(!isCustomizing)}
-             className="h-8 px-3 text-[10px] font-black uppercase tracking-widest"
-           >
-              {isCustomizing ? <CheckCircle2 className="w-3 h-3 mr-2" /> : <Settings2 className="w-3 h-3 mr-2" />}
-              {isCustomizing ? "Save Layout" : "Customize"}
-           </Button>
-           {isCustomizing && (
-             <Button 
-               variant="secondary" 
-               size="sm" 
-               onClick={resetLayout}
-               className="h-8 px-3 text-[10px] font-black uppercase tracking-widest"
-             >
-                <RotateCcw className="w-3 h-3 mr-2" /> Reset
-             </Button>
-           )}
-           <div className="h-4 w-px bg-border mx-1" />
-           <div className="px-3 py-1.5 bg-emerald-500/10 text-emerald-500 rounded-lg text-xs font-bold flex items-center gap-2">
-              <div className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse" />
-              Live System
-           </div>
+          <Button
+            variant={isCustomizing ? "primary" : "secondary"}
+            size="sm"
+            onClick={() => setIsCustomizing(!isCustomizing)}
+            className="h-8 px-3 text-[10px] font-black uppercase tracking-widest"
+          >
+            {isCustomizing ? <CheckCircle2 className="w-3 h-3 mr-2" /> : <Settings2 className="w-3 h-3 mr-2" />}
+            {isCustomizing ? "Save Layout" : "Customize"}
+          </Button>
+          {isCustomizing && (
+            <Button
+              variant="secondary"
+              size="sm"
+              onClick={resetLayout}
+              className="h-8 px-3 text-[10px] font-black uppercase tracking-widest"
+            >
+              <RotateCcw className="w-3 h-3 mr-2" /> Reset
+            </Button>
+          )}
+          <div className="h-4 w-px bg-border mx-1" />
+          <div className="px-3 py-1.5 bg-emerald-500/10 text-emerald-500 rounded-lg text-xs font-bold flex items-center gap-2">
+            <div className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse" />
+            Live System
+          </div>
         </div>
       </div>
 
@@ -119,7 +119,7 @@ export default function Dashboard() {
                       className={`relative transition-all duration-200 ${snapshot.isDragging ? 'z-50' : ''}`}
                     >
                       {isCustomizing && (
-                        <div 
+                        <div
                           {...provided.dragHandleProps}
                           className="absolute -top-3 left-1/2 -translate-x-1/2 z-50 bg-primary text-white px-4 py-1 rounded-full shadow-lg flex items-center gap-2 cursor-grab active:cursor-grabbing hover:scale-105 transition-transform"
                         >
