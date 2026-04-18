@@ -12,11 +12,11 @@ export function StatCard({ title, value, trend, trendUp, icon: Icon, color }) {
   return (
     <Card className="glass border-border shadow-sm group hover:scale-[1.02] transition-transform duration-300">
       <CardContent className="p-6">
-        <div className="flex justify-between items-start mb-4">
-          <div className={`p-2 rounded-xl ${colorMap[color] || colorMap.indigo}`}>
+        <div className="flex justify-between items-center mb-5">
+          <div className={`p-2.5 rounded-xl flex items-center justify-center ${colorMap[color] || colorMap.indigo}`}>
             <Icon className="w-5 h-5" />
           </div>
-          <div className={`flex items-center gap-1 text-xs font-bold ${trendUp ? 'text-emerald-500' : 'text-rose-500'}`}>
+          <div className={`flex items-center gap-1 text-[10px] font-black uppercase tracking-wider ${trendUp ? 'text-emerald-500' : 'text-rose-500'}`}>
             {trend}
           </div>
         </div>

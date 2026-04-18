@@ -8,9 +8,6 @@ export const useUIStore = create(
       currency: 'INR',
       locale: 'en-IN',
       
-      setCurrency: (currency) => set({ currency }),
-      setLocale: (locale) => set({ locale }),
-      
       setTheme: (theme) => {
         set({ theme });
         if (theme === 'dark') {

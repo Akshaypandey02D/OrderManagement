@@ -9,6 +9,10 @@ import { Card, CardContent } from '../components/ui/Card';
 import { Input } from '../components/ui/Input';
 import { useProductStore } from '../stores/useProductStore';
 import { useNotificationStore } from '../stores/useNotificationStore';
+import { useState } from 'react';
+import { Skeleton } from '../components/ui/Skeleton';
+import { ErrorView } from '../components/ui/ErrorView';
+import { EmptyState } from '../components/ui/EmptyState';
 
 const productSchema = z.object({
   name: z.string().min(1, 'Product name is required'),
@@ -43,6 +47,16 @@ export default function ProductForm() {
       description: ''
     }
   });
+
+  const [isLoading, setIsLoading] = useState(true);
+  const [isError, setIsError] = useState(false);
+
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      setIsLoading(false);
+    }, 400);
+    return () => clearTimeout(timer);
+  }, []);
 
   useEffect(() => {
     if (isEditing) {
@@ -91,6 +105,67 @@ export default function ProductForm() {
       navigate('/products');
     }
   };
+
+  if (isError) {
+    return (
+      <div className="flex items-center justify-center min-h-[60vh]">
+        <ErrorView 
+          title="Configuration Failure" 
+          message="The validation engine failed to initialize the form buffers."
+          onRetry={() => { setIsError(false); setIsLoading(true); }}
+        />
+      </div>
+    );
+  }
+
+  const product = isEditing ? getProductById(id) : null;
+  if (!isLoading && isEditing && !product) {
+    return (
+      <div className="py-20 max-w-2xl mx-auto">
+        <EmptyState 
+          icon={Package}
+          title="Unknown Product"
+          description={`The product with SKU/ID "${id}" does not exist in the active catalog.`}
+          actionLabel="View Catalog"
+          actionLink="/products"
+        />
+      </div>
+    );
+  }
+
+  if (isLoading) {
+    return (
+      <div className="max-w-4xl mx-auto space-y-6 pb-10 px-4">
+        <div className="flex justify-between items-center h-10">
+          <Skeleton className="w-10 h-10 rounded-xl" />
+          <Skeleton className="w-24 h-10 rounded-xl" />
+        </div>
+        <div className="space-y-2">
+          <Skeleton className="h-8 w-64" />
+          <Skeleton className="h-4 w-48" />
+        </div>
+        <Card className="glass p-8 space-y-8">
+           <Skeleton className="h-6 w-48" />
+           <div className="grid grid-cols-2 gap-6">
+             <div className="col-span-2 space-y-2">
+               <Skeleton className="h-4 w-32" />
+               <Skeleton className="h-12 w-full rounded-xl" />
+             </div>
+             {Array(4).fill(0).map((_, i) => (
+               <div key={i} className="space-y-2">
+                 <Skeleton className="h-4 w-20" />
+                 <Skeleton className="h-12 w-full rounded-xl" />
+               </div>
+             ))}
+             <div className="col-span-2 space-y-2">
+               <Skeleton className="h-4 w-32" />
+               <Skeleton className="h-32 w-full rounded-xl" />
+             </div>
+           </div>
+        </Card>
+      </div>
+    );
+  }
 
   return (
     <div className="max-w-4xl mx-auto space-y-6 pb-10 px-4">

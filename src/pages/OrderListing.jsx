@@ -1,13 +1,17 @@
-import { useState } from 'react';
-import { motion, AnimatePresence } from 'framer-motion';
+import { Search, Filter, Trash2, LayoutGrid, List, ShoppingCart } from 'lucide-react';
 import { Link } from 'react-router-dom';
-import { Search, Filter, Trash2, LayoutGrid, List } from 'lucide-react';
+import { motion, AnimatePresence } from 'framer-motion';
 import { Button } from '../components/ui/Button';
 import { useOrderStore } from '../stores/useOrderStore';
 import { orderService } from '../services/orderService';
 import { AlertModal } from '../components/ui/Modal';
 import OrderTable from '../components/Orders/OrderTable';
 import OrderGrid from '../components/Orders/OrderGrid';
+import { Skeleton } from '../components/ui/Skeleton';
+import { ErrorView } from '../components/ui/ErrorView';
+import { EmptyState } from '../components/ui/EmptyState';
+import { Card } from '../components/ui/Card';
+import { useState, useEffect } from 'react';
 
 export default function OrderListing() {
   const { orders } = useOrderStore();
@@ -18,6 +22,27 @@ export default function OrderListing() {
   const [activeMenuId, setActiveMenuId] = useState(null);
   const [deleteId, setDeleteId] = useState(null);
   const [selectedIds, setSelectedIds] = useState([]);
+  const [isLoading, setIsLoading] = useState(true);
+  const [isError, setIsError] = useState(false);
+
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      setIsLoading(false);
+    }, 400);
+    return () => clearTimeout(timer);
+  }, []);
+
+  if (isError) {
+    return (
+      <div className="flex items-center justify-center min-h-[60vh]">
+        <ErrorView 
+          title="Order Sync Failure" 
+          message="We could not synchronize with the order database. This usually happens during high network congestion."
+          onRetry={() => { setIsError(false); setIsLoading(true); }}
+        />
+      </div>
+    );
+  }
 
   const handleStatusChange = (id, newStatus) => {
     orderService.updateOrderStatus(id, newStatus);
@@ -107,7 +132,40 @@ export default function OrderListing() {
         </div>
       </div>
 
-      {view === 'table' ? (
+      {isLoading ? (
+        <div className="space-y-4">
+          <Card className="glass p-6">
+             <div className="space-y-4">
+               {Array(5).fill(0).map((_, i) => (
+                 <div key={i} className="flex items-center justify-between py-4 border-b border-border last:border-0">
+                   <div className="flex items-center gap-4">
+                     <Skeleton className="w-5 h-5 rounded" />
+                     <div className="space-y-2">
+                       <Skeleton className="h-4 w-32" />
+                       <Skeleton className="h-3 w-48" />
+                     </div>
+                   </div>
+                   <div className="flex gap-4 items-center">
+                     <Skeleton className="h-4 w-20" />
+                     <Skeleton className="h-6 w-16 rounded-full" />
+                     <Skeleton className="h-8 w-8 rounded-lg" />
+                   </div>
+                 </div>
+               ))}
+             </div>
+          </Card>
+        </div>
+      ) : orders.length === 0 ? (
+        <div className="py-20">
+          <EmptyState 
+            icon={ShoppingCart}
+            title="No Orders Found"
+            description="Start building your business footprint by creating your first customer order."
+            actionLabel="Create Order"
+            actionLink="/orders/new"
+          />
+        </div>
+      ) : view === 'table' ? (
         <OrderTable 
           orders={filteredOrders} 
           selectedIds={selectedIds}

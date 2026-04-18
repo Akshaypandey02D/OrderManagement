@@ -1,6 +1,9 @@
 import { useState, useEffect } from 'react';
 import { useParams, Link } from 'react-router-dom';
-import { ArrowLeft, Printer, Edit, Package, User, FileText, CheckCircle2, History, AlertCircle } from 'lucide-react';
+import { 
+  ArrowLeft, Printer, Edit, Package, User, FileText, 
+  CheckCircle2, History, AlertCircle, ShoppingBag 
+} from 'lucide-react';
 import { Button } from '../components/ui/Button';
 import { Badge } from '../components/ui/Badge';
 import { Card, CardContent } from '../components/ui/Card';
@@ -8,6 +11,9 @@ import { useOrderStore } from '../stores/useOrderStore';
 import { useNotificationStore } from '../stores/useNotificationStore';
 import { orderService } from '../services/orderService';
 import { formatCurrency, formatDate } from '../utils/format';
+import { Skeleton } from '../components/ui/Skeleton';
+import { ErrorView } from '../components/ui/ErrorView';
+import { EmptyState } from '../components/ui/EmptyState';
 
 const statusStyles = {
   'Pending': 'warning',
@@ -22,13 +28,20 @@ export default function OrderDetail() {
   const { dispatchNotification } = useNotificationStore();
   
   const [note, setNote] = useState('');
+  const [isLoading, setIsLoading] = useState(true);
+  const [isError, setIsError] = useState(false);
   const order = getOrderById(id);
 
   useEffect(() => {
+    const timer = setTimeout(() => {
+      setIsLoading(false);
+    }, 400);
+    
     if (order) {
       setNote(order.notes || '');
     }
-  }, [id, order?.notes]);
+    return () => clearTimeout(timer);
+  }, [id, order?.notes, order]);
 
   const handleSaveNote = () => {
     orderService.addOrderNote(id, note);
@@ -39,15 +52,58 @@ export default function OrderDetail() {
     window.print();
   };
 
-  if (!order) {
+  if (isError) {
     return (
-      <div className="flex flex-col items-center justify-center py-20">
-        <AlertCircle className="w-12 h-12 text-rose-500 mb-4 animate-pulse" />
-        <h2 className="text-xl font-bold text-textMain">Order Not Found</h2>
-        <p className="text-sm text-textMuted mt-2 mb-8 uppercase tracking-widest font-black opacity-50">Invalid Order Identification</p>
-        <Link to="/orders">
-          <Button variant="secondary"><ArrowLeft className="w-4 h-4 mr-2" /> Back to Terminal</Button>
-        </Link>
+      <div className="flex items-center justify-center min-h-[60vh]">
+        <ErrorView 
+          title="Data Extraction Fault" 
+          message="The system failed to retrieve the encrypted order manifest from the secure vault."
+          onRetry={() => { setIsError(false); setIsLoading(true); }}
+        />
+      </div>
+    );
+  }
+
+  if (!isLoading && !order) {
+    return (
+      <div className="py-20 max-w-2xl mx-auto">
+        <EmptyState 
+          icon={ShoppingBag}
+          title="Order Not Found"
+          description={`The order identifier "${id}" does not exist in our central distribution database.`}
+          actionLabel="View All Orders"
+          actionLink="/orders"
+        />
+      </div>
+    );
+  }
+
+  if (isLoading) {
+    return (
+      <div className="space-y-6 max-w-6xl mx-auto pb-10">
+        <div className="flex justify-between items-center gap-4">
+          <div className="flex items-center gap-4">
+            <Skeleton className="w-10 h-10 rounded-xl" />
+            <div className="space-y-2">
+              <Skeleton className="h-6 w-48" />
+              <Skeleton className="h-4 w-32" />
+            </div>
+          </div>
+          <div className="flex gap-2">
+            <Skeleton className="h-10 w-24 rounded-lg" />
+            <Skeleton className="h-10 w-24 rounded-lg" />
+          </div>
+        </div>
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+          <div className="lg:col-span-2 space-y-6">
+            <Skeleton className="h-[400px] w-full rounded-[2.5rem]" />
+            <Skeleton className="h-[300px] w-full rounded-[2.5rem]" />
+          </div>
+          <div className="space-y-6">
+            <Skeleton className="h-[300px] w-full rounded-[2.5rem]" />
+            <Skeleton className="h-[250px] w-full rounded-[2.5rem]" />
+          </div>
+        </div>
       </div>
     );
   }

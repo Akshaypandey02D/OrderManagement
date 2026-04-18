@@ -20,6 +20,10 @@ import { useOrderStore } from '../stores/useOrderStore';
 import { useProductStore } from '../stores/useProductStore';
 import { useNotificationStore } from '../stores/useNotificationStore';
 import { orderService } from '../services/orderService';
+import { Skeleton } from '../components/ui/Skeleton';
+import { ErrorView } from '../components/ui/ErrorView';
+import { EmptyState } from '../components/ui/EmptyState';
+import { ShoppingBag } from 'lucide-react';
 
 // Extracted Components
 import OrderStepper from '../components/Orders/Form/OrderStepper';
@@ -68,6 +72,15 @@ export default function OrderForm() {
   const [isAddingItem, setIsAddingItem] = useState(false);
   const [selectedProductId, setSelectedProductId] = useState('');
   const [quantity, setQuantity] = useState(1);
+  const [isLoading, setIsLoading] = useState(true);
+  const [isError, setIsError] = useState(false);
+
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      setIsLoading(false);
+    }, 400);
+    return () => clearTimeout(timer);
+  }, []);
 
   const {
     register,
@@ -226,6 +239,62 @@ export default function OrderForm() {
   };
 
   const prevStep = () => setCurrentStep(s => Math.max(s - 1, 1));
+
+  if (isError) {
+    return (
+      <div className="flex items-center justify-center min-h-[60vh]">
+        <ErrorView 
+          title="Wizard Boot Failure" 
+          message="The order creation wizard failed to initialize the multi-step state engine."
+          onRetry={() => { setIsError(false); setIsLoading(true); }}
+        />
+      </div>
+    );
+  }
+
+  const order = isEditing ? getOrderById(id) : null;
+  if (!isLoading && isEditing && !order) {
+    return (
+      <div className="py-20 max-w-2xl mx-auto">
+        <EmptyState 
+          icon={ShoppingBag}
+          title="Ghost Order"
+          description={`The order identifier "${id}" has vanished from our tracking matrix.`}
+          actionLabel="View All Orders"
+          actionLink="/orders"
+        />
+      </div>
+    );
+  }
+
+  if (isLoading) {
+    return (
+      <div className="max-w-4xl mx-auto space-y-8 pb-10 px-4">
+        <Skeleton className="w-10 h-10 rounded-xl" />
+        <div className="space-y-4">
+          <Skeleton className="h-8 w-64" />
+          <Skeleton className="h-4 w-96" />
+        </div>
+        <div className="flex justify-between gap-4">
+          {Array(3).fill(0).map((_, i) => <Skeleton key={i} className="h-10 flex-1 rounded-xl" />)}
+        </div>
+        <Card className="glass p-10 space-y-8">
+           <div className="space-y-6">
+             {Array(4).fill(0).map((_, i) => (
+               <div key={i} className="space-y-2">
+                 <Skeleton className="h-4 w-32" />
+                 <Skeleton className="h-12 w-full rounded-xl" />
+               </div>
+             ))}
+           </div>
+           <div className="flex justify-between pt-6 border-t border-border">
+             <Skeleton className="h-10 w-24 rounded-lg" />
+             <Skeleton className="h-10 w-32 rounded-lg" />
+           </div>
+        </Card>
+      </div>
+    );
+  }
 
   return (
     <div className="max-w-4xl mx-auto space-y-8 pb-10 px-4">
